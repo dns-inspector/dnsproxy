@@ -1,0 +1,39 @@
+name: Go
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  build:
+    name: "Build & Test"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "stable"
+
+      - name: Build
+        run: DOCKER_CMD=docker ./release.sh $(cat dnsproxy.version)
+
+      - name: Upload Artifacts (1/2)
+        uses: actions/upload-artifact@v4
+        with:
+          name: dnsproxy-linux-amd64.gz
+          path: artifacts/*.gz
+
+      - name: Upload Artifacts (2/2)
+        uses: actions/upload-artifact@v4
+        with:
+          name: dnsproxy-linux-amd64.rpm
+          path: artifacts/*.rpm

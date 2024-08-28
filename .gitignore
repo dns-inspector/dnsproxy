@@ -1,0 +1,6 @@
+cmd/dnsproxy/*
+!cmd/dnsproxy/*.go
+artifacts/
+.DS_Store
+rpm/rpms
+rpm/*.tar.gz

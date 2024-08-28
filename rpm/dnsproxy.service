@@ -1,0 +1,15 @@
+[Unit]
+Description=DNS Proxy
+After=syslog.target
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/dnsproxy/
+ExecStart=/opt/dnsproxy/dnsproxy
+TimeoutSec=5000
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
