@@ -38,6 +38,10 @@ test       Validate the dnsproxy configuration. Print any errors to stderr. Exit
 
 Options:
 -c --config <value>      Specify the path to the config file. Only used in server and test mode.
+
+Signals:
+USR1       Rotate the log file by appending yesterdays date to the file name and start a new file
+USR2       Reload the configuration without restarting the process
 `, os.Args[0])
 	os.Exit(1)
 }
@@ -100,13 +104,23 @@ func main() {
 		os.Exit(1)
 	}()
 
+	reload := make(chan os.Signal, 1)
+	signal.Notify(reload, syscall.SIGUSR2)
+	go func() {
+		for {
+			<-reload
+			dnsproxy.Stop()
+		}
+	}()
+
 	rotate := make(chan os.Signal, 1)
 	signal.Notify(rotate, syscall.SIGUSR1)
 	go func() {
-		<-rotate
-		dnsproxy.RotateLog()
+		for {
+			<-rotate
+			dnsproxy.RotateLog()
+		}
 	}()
 
 	dnsproxy.Start(configPath)
-	dnsproxy.Stop()
 }

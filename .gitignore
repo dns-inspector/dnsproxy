@@ -4,3 +4,7 @@ artifacts/
 .DS_Store
 rpm/rpms
 rpm/*.tar.gz
+*.csv
+*.crt
+*.key
+/dnsproxy

@@ -7,6 +7,7 @@ After=network.target
 Type=simple
 User=root
 ExecStart=/usr/sbin/dnsproxy server
+ExecReload=/bin/kill -USR2 "$MAINPID"
 TimeoutSec=5000
 Restart=on-failure
 

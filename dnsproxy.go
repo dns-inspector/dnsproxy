@@ -63,35 +63,54 @@ func Start(configPath string) {
 		Certificates: []tls.Certificate{cert},
 	}
 
+	failed := make(chan uint8)
+	defer stop()
+
 	go func() {
 		l, err := tls.Listen("tcp4", fmt.Sprintf("0.0.0.0:%d", serverConfig.TLSPort), c)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error starting IPv4 TLS server: %s\n", err.Error())
+			failed <- 1
 		}
 		listenerTLS4 = l
 
-		tlsServer(l)
+		if err := tlsServer(l); err != nil {
+			if !strings.Contains(err.Error(), "use of closed network connection") {
+				fmt.Fprintf(os.Stderr, "Error starting IPv4 TLS server: %s\n", err.Error())
+			}
+			failed <- 1
+		}
 	}()
 
 	go func() {
 		l, err := tls.Listen("tcp6", fmt.Sprintf("[::]:%d", serverConfig.TLSPort), c)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error starting IPv6 TLS server: %s\n", err.Error())
+			failed <- 1
 		}
 		listenerTLS6 = l
 
-		tlsServer(l)
+		if err := tlsServer(l); err != nil {
+			if !strings.Contains(err.Error(), "use of closed network connection") {
+				fmt.Fprintf(os.Stderr, "Error starting IPv6 TLS server: %s\n", err.Error())
+			}
+			failed <- 1
+		}
 	}()
 
 	go func() {
 		l, err := tls.Listen("tcp4", fmt.Sprintf("0.0.0.0:%d", serverConfig.HTTPSPort), c)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error starting IPv4 HTTPS server: %s\n", err.Error())
+			failed <- 1
 		}
 		listenerHTTPS4 = l
 
 		if err := http.Serve(l, &httpServer{}); err != nil {
-			fmt.Fprintf(os.Stderr, "Error starting IPv4 HTTPS server: %s\n", err.Error())
+			if !strings.Contains(err.Error(), "use of closed network connection") {
+				fmt.Fprintf(os.Stderr, "Error starting IPv4 HTTPS server: %s\n", err.Error())
+			}
+			failed <- 1
 		}
 	}()
 
@@ -99,18 +118,22 @@ func Start(configPath string) {
 		l, err := tls.Listen("tcp6", fmt.Sprintf("[::]:%d", serverConfig.HTTPSPort), c)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error starting IPv6 HTTPS server: %s\n", err.Error())
+			failed <- 1
 		}
 		listenerHTTPS6 = l
 
 		if err := http.Serve(l, &httpServer{}); err != nil {
-			fmt.Fprintf(os.Stderr, "Error starting IPv6 HTTPS server: %s\n", err.Error())
+			if !strings.Contains(err.Error(), "use of closed network connection") {
+				fmt.Fprintf(os.Stderr, "Error starting IPv6 HTTPS server: %s\n", err.Error())
+			}
+			failed <- 1
 		}
 	}()
 
 	if serverConfig.Verbosity >= 2 {
 		logf("main", "info", "", "", "Server started")
 	}
-	select {}
+	<-failed
 }
 
 func Stop() {
@@ -118,11 +141,16 @@ func Stop() {
 		logf("main", "info", "", "", "Server stopped")
 	}
 
+	stop()
+}
+
+func stop() {
 	if logFile != nil {
 		logLock.Lock()
 		logFile.Sync()
 		logFile.Close()
 		logFile = nil
+		logLock.Unlock()
 	}
 	if listenerTLS4 != nil {
 		listenerTLS4.Close()
