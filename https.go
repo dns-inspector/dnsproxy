@@ -31,7 +31,9 @@ type httpServer struct{}
 func (s *httpServer) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	defer func() {
 		if r := recover(); r != nil {
-			logf("https", "error", "", "", "ServeHTTP: recovered from panic: %s", r)
+			if serverConfig.Verbosity >= 1 {
+				logf("https", "error", "", "", "ServeHTTP: recovered from panic: %s", r)
+			}
 		}
 	}()
 
@@ -39,7 +41,9 @@ func (s *httpServer) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	rw.Header().Add("Server", "-")
 
 	useragent := r.Header.Get("User-Agent")
-	logf("https", "info", r.RemoteAddr, useragent, "connect")
+	if serverConfig.Verbosity >= 3 {
+		logf("https", "info", r.RemoteAddr, useragent, "connect")
+	}
 
 	defer r.Body.Close()
 
@@ -48,14 +52,18 @@ func (s *httpServer) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 		if r.Method == "GET" {
 			encodedMessage := r.URL.Query().Get("dns")
 			if encodedMessage == "" {
-				logf("https", "info", r.RemoteAddr, useragent, "missing dns query in url")
+				if serverConfig.Verbosity >= 2 {
+					logf("https", "warn", r.RemoteAddr, useragent, "missing dns query in url")
+				}
 				rw.WriteHeader(400)
 				rw.Write([]byte("missing dns query in url"))
 				return
 			}
 			m, err := base64.RawURLEncoding.DecodeString(encodedMessage)
 			if err != nil {
-				logf("https", "info", r.RemoteAddr, useragent, "invalid base64 data in dns query")
+				if serverConfig.Verbosity >= 2 {
+					logf("https", "warn", r.RemoteAddr, useragent, "invalid base64 data in dns query")
+				}
 				rw.WriteHeader(400)
 				rw.Write([]byte("invalid base64 value in dns query"))
 				return
@@ -63,7 +71,9 @@ func (s *httpServer) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 			message = m
 		} else if r.Method == "POST" {
 			if r.ContentLength > 4096 {
-				logf("https", "info", r.RemoteAddr, useragent, "message too large")
+				if serverConfig.Verbosity >= 2 {
+					logf("https", "warn", r.RemoteAddr, useragent, "message too large")
+				}
 				rw.WriteHeader(400)
 				rw.Write([]byte("message too large"))
 				return
@@ -85,22 +95,29 @@ func (s *httpServer) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 		message = append(length, message...)
 		reply, err := proxyDnsMessage(message)
 		if err != nil {
-			logf("https", "error", r.RemoteAddr, useragent, "error proxying dns message: %s", err.Error())
+			if serverConfig.Verbosity >= 1 {
+				logf("https", "error", r.RemoteAddr, useragent, "error proxying dns message: %s", err.Error())
+			}
 			rw.WriteHeader(500)
 			rw.Write([]byte("internal server error"))
 			return
+		}
+		if serverConfig.Verbosity >= 3 {
+			logf("https", "trace", r.RemoteAddr, useragent, "message: %02x reply: %02x", message, reply)
 		}
 		rw.Header().Set("Content-Type", "application/dns-message")
 		rw.Header().Set("Content-Length", fmt.Sprintf("%d", len(reply[2:])))
 		rw.WriteHeader(200)
 		rw.Write(reply[2:])
 		return
-	} else if r.URL.Path == "/" {
-		rw.Header().Add("Location", "https://dnsinspector.com/dns.html")
+	} else if r.URL.Path == "/" && serverConfig.HTTPRedirect != "" {
+		rw.Header().Add("Location", serverConfig.HTTPRedirect)
 		rw.WriteHeader(302)
 		return
 	}
 
-	logf("https", "warn", r.RemoteAddr, useragent, "unknown url: %s", r.URL.String())
+	if serverConfig.Verbosity >= 2 {
+		logf("https", "warn", r.RemoteAddr, useragent, "unknown url: %s", r.URL.String())
+	}
 	rw.WriteHeader(404)
 }

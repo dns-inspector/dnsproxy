@@ -37,32 +37,23 @@ var (
 )
 
 var (
-	CertPath      = "server.crt"
-	KeyPath       = "server.key"
-	LogPath       = "dnsproxy.log"
-	DNSServerAddr = "127.0.0.1:53"
-	HTTPSPort     = "443"
-	TLSPort       = "853"
-)
-
-var (
-	logLock = &sync.Mutex{}
-	logFile *os.File
-)
-
-var (
+	serverConfig   *tServerConfig
+	logLock        = &sync.Mutex{}
+	logFile        *os.File
 	listenerTLS4   net.Listener
 	listenerTLS6   net.Listener
 	listenerHTTPS4 net.Listener
 	listenerHTTPS6 net.Listener
 )
 
-func Start() {
-	if f, err := os.OpenFile(LogPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644); err == nil {
+func Start(configPath string) {
+	serverConfig = mustLoadConfig(configPath)
+
+	if f, err := os.OpenFile(serverConfig.LogPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644); err == nil {
 		logFile = f
 	}
 
-	cert, err := tls.LoadX509KeyPair(CertPath, KeyPath)
+	cert, err := tls.LoadX509KeyPair(serverConfig.CertPath, serverConfig.KeyPath)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error loading certificate or private key: %s\n", err.Error())
 		os.Exit(1)
@@ -73,7 +64,7 @@ func Start() {
 	}
 
 	go func() {
-		l, err := tls.Listen("tcp4", "0.0.0.0:"+TLSPort, c)
+		l, err := tls.Listen("tcp4", fmt.Sprintf("0.0.0.0:%d", serverConfig.TLSPort), c)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error starting IPv4 TLS server: %s\n", err.Error())
 		}
@@ -83,7 +74,7 @@ func Start() {
 	}()
 
 	go func() {
-		l, err := tls.Listen("tcp6", "[::]:"+TLSPort, c)
+		l, err := tls.Listen("tcp6", fmt.Sprintf("[::]:%d", serverConfig.TLSPort), c)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error starting IPv6 TLS server: %s\n", err.Error())
 		}
@@ -93,7 +84,7 @@ func Start() {
 	}()
 
 	go func() {
-		l, err := tls.Listen("tcp4", "0.0.0.0:"+HTTPSPort, c)
+		l, err := tls.Listen("tcp4", fmt.Sprintf("0.0.0.0:%d", serverConfig.HTTPSPort), c)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error starting IPv4 HTTPS server: %s\n", err.Error())
 		}
@@ -105,7 +96,7 @@ func Start() {
 	}()
 
 	go func() {
-		l, err := tls.Listen("tcp6", "[::]:"+HTTPSPort, c)
+		l, err := tls.Listen("tcp6", fmt.Sprintf("[::]:%d", serverConfig.HTTPSPort), c)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error starting IPv6 HTTPS server: %s\n", err.Error())
 		}
@@ -116,12 +107,16 @@ func Start() {
 		}
 	}()
 
-	logf("main", "info", "", "", "Server started")
+	if serverConfig.Verbosity >= 2 {
+		logf("main", "info", "", "", "Server started")
+	}
 	select {}
 }
 
 func Stop() {
-	logf("main", "info", "", "", "Server stopped")
+	if serverConfig.Verbosity >= 2 {
+		logf("main", "info", "", "", "Server stopped")
+	}
 
 	if logFile != nil {
 		logLock.Lock()
@@ -159,9 +154,9 @@ func RotateLog() {
 	logFile.Close()
 	logFile = nil
 
-	os.Rename(LogPath, fmt.Sprintf("%s.%s", LogPath, time.Now().AddDate(0, 0, -1).Format("2006-01-02")))
+	os.Rename(serverConfig.LogPath, fmt.Sprintf("%s.%s", serverConfig.LogPath, time.Now().AddDate(0, 0, -1).Format("2006-01-02")))
 
-	if f, err := os.OpenFile(LogPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644); err == nil {
+	if f, err := os.OpenFile(serverConfig.LogPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644); err == nil {
 		logFile = f
 	}
 }
@@ -169,7 +164,7 @@ func RotateLog() {
 // Proxy the given DNS message to the server.
 // The message MUST include a 2-byte big-endian length at the start.
 func proxyDnsMessage(message []byte) ([]byte, error) {
-	out, err := net.Dial("tcp", DNSServerAddr)
+	out, err := net.Dial("tcp", serverConfig.DNSServerAddr)
 	if err != nil {
 		return nil, err
 	}

@@ -37,22 +37,30 @@ func handleTlsConn(conn net.Conn) {
 	defer func() {
 		if r := recover(); r != nil {
 			conn.Close()
-			logf("tls", "error", "", "", "handleTlsConn: recovered from panic: %s", r)
+			if serverConfig.Verbosity >= 1 {
+				logf("tls", "error", "", "", "handleTlsConn: recovered from panic: %s", r)
+			}
 		}
 	}()
 
-	logf("tls", "info", conn.RemoteAddr().String(), "", "connect")
+	if serverConfig.Verbosity >= 3 {
+		logf("tls", "info", conn.RemoteAddr().String(), "", "connect")
+	}
 	defer conn.Close()
 
 	rawSize := make([]byte, 2)
 
 	if _, err := conn.Read(rawSize); err != nil {
-		logf("tls", "warn", conn.RemoteAddr().String(), "", "error reading message: %s", err.Error())
+		if serverConfig.Verbosity >= 2 {
+			logf("tls", "warn", conn.RemoteAddr().String(), "", "error reading message: %s", err.Error())
+		}
 		return
 	}
 	size := binary.BigEndian.Uint16(rawSize)
 	if size > 4096 {
-		logf("tls", "warn", conn.RemoteAddr().String(), "", "request too large: %d", size)
+		if serverConfig.Verbosity >= 2 {
+			logf("tls", "warn", conn.RemoteAddr().String(), "", "request too large: %d", size)
+		}
 		conn.Write([]byte("request too large"))
 		return
 	}
@@ -60,11 +68,15 @@ func handleTlsConn(conn net.Conn) {
 	message := make([]byte, size)
 	read, err := conn.Read(message)
 	if err != nil {
-		logf("tls", "warn", conn.RemoteAddr().String(), "", "error reading message: %s", err.Error())
+		if serverConfig.Verbosity >= 2 {
+			logf("tls", "warn", conn.RemoteAddr().String(), "", "error reading message: %s", err.Error())
+		}
 		return
 	}
 	if read != int(size) {
-		logf("tls", "warn", conn.RemoteAddr().String(), "", "invalid message size")
+		if serverConfig.Verbosity >= 2 {
+			logf("tls", "warn", conn.RemoteAddr().String(), "", "invalid message size")
+		}
 		conn.Write([]byte("invalid message size"))
 		return
 	}
@@ -73,8 +85,14 @@ func handleTlsConn(conn net.Conn) {
 
 	reply, err := proxyDnsMessage(message)
 	if err != nil {
-		logf("tls", "error", conn.RemoteAddr().String(), "", "error proxying message: %s", err.Error())
+		if serverConfig.Verbosity >= 1 {
+			logf("tls", "error", conn.RemoteAddr().String(), "", "error proxying message: %s", err.Error())
+		}
 		return
+	}
+
+	if serverConfig.Verbosity >= 3 {
+		logf("tls", "trace", conn.RemoteAddr().String(), "", "message: %02x reply: %02x", message, reply)
 	}
 
 	conn.Write(reply)

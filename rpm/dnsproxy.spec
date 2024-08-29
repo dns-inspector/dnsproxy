@@ -6,7 +6,9 @@ License:        GPL-3.0
 Source0:        %{name}-%{version}.tar.gz
 BuildRequires:  systemd-rpm-macros
 Provides:       %{name} = %{version}
-Prefix:         /opt
+Prefix:         /etc
+URL:            https://github.com/dns-inspector/dnsproxy
+BugURL:         https://github.com/dns-inspector/dnsproxy/issues
 
 %description
 dnsproxy is a server that proxies DNS over TLS and DNS over HTTPS requests to a standard DNS server.
@@ -22,24 +24,26 @@ CGO_ENABLED=0 GOAMD64=v2 go build -v -buildmode=exe -trimpath -ldflags="-s -w -X
 ./dnsproxy -v
 
 %install
-mkdir -p %{buildroot}/opt/%{name}
-install -Dpm 0700 cmd/dnsproxy/dnsproxy %{buildroot}/opt/%{name}/dnsproxy
-install -Dpm 644 %{name}.service %{buildroot}%{_unitdir}/%{name}.service
+mkdir -p %{buildroot}/etc/dnsproxy
+install -Dpm 0755 cmd/dnsproxy/dnsproxy %{buildroot}/usr/sbin/dnsproxy
+install -Dpm 644 dnsproxy.conf %{buildroot}/etc/dnsproxy/dnsproxy.conf
+install -Dpm 644 dnsproxy.service %{buildroot}%{_unitdir}/dnsproxy.service
 
 %check
 CGO_ENABLED=0 GOAMD64=v2 go build -v ./...
 
 %post
-%systemd_post %{name}.service
+%systemd_post dnsproxy.service
 
 %posttrans
-if test $(readlink /proc/*/exe | grep /opt/%{name}/dnsproxy | wc -l) = 1; then
-    systemctl restart %{name}.service
+if test $(readlink /proc/*/exe | grep /etc/dnsproxy/dnsproxy | wc -l) = 1; then
+    systemctl restart dnsproxy.service
 fi
 
 %preun
-%systemd_preun %{name}.service
+%systemd_preun dnsproxy.service
 
 %files
-/opt/%{name}/dnsproxy
-%{_unitdir}/%{name}.service
+/usr/sbin/dnsproxy
+/etc/dnsproxy/dnsproxy.conf
+%{_unitdir}/dnsproxy.service

@@ -23,102 +23,73 @@ import (
 	"os"
 	"os/signal"
 	"runtime"
-	"strconv"
 	"syscall"
 
 	"dnsproxy"
 )
 
 func printHelpAndExit() {
-	fmt.Printf(`Usage %s [options]
+	fmt.Printf(`Usage %s <mode> [options]
+
+Modes:
+config     Print out the default configuration to stdout and exit
+server     Start the dnsproxy server
+test       Validate the dnsproxy configuration. Print any errors to stderr. Exits with 0 if valid.
 
 Options:
--c --certificate <value>   Specify the path to server certificate. Multiple certificates can be
-                           included to form a chain, with the leaf as the first. Certificates must
-                           be PEM encoded, without encryption.
-                           Default is 'server.crt'
-
--k --key <value>           Specify the path to the private key. The key must be a PEM-encoded PKCS#1
-                           RSA or ECDSA private key.
-                           Default is 'server.key'
-
--s --server <value>        Specify the IPv4 address with port to proxy DNS requests to. Proxied
-                           requests always use DNS over TCP.
-                           Default is '127.0.0.1:53'
-
--l --log-file <value>      Specify the path to the log file to write to.
-                           Default is 'dnsproxy.log'
-
---https-port <value>       Specify the port used for the DNS over HTTPS server.
-                           Defaults is 443
-
---tls-port <value>         Specify the port used for the DNS over TLS server.
-                           Defaults is 853
+-c --config <value>      Specify the path to the config file. Only used in server and test mode.
 `, os.Args[0])
 	os.Exit(1)
 }
 
 func main() {
-	for i := 1; i < len(os.Args); i++ {
+	if len(os.Args) == 1 {
+		printHelpAndExit()
+	}
+
+	testOnly := false
+
+	verb := os.Args[1]
+	switch verb {
+	case "config":
+		fmt.Print(dnsproxy.DefaultConfig)
+		os.Exit(0)
+	case "server":
+		testOnly = false
+	case "test":
+		testOnly = true
+	case "-v", "--version":
+		fmt.Printf("%s (Variant: %s-%s, Built on: %s, Revision: %s)\n", dnsproxy.Version, runtime.GOOS, runtime.GOARCH, dnsproxy.BuiltOn, dnsproxy.Revision)
+		os.Exit(0)
+	case "-h", "--help":
+		printHelpAndExit()
+	default:
+		fmt.Fprintf(os.Stderr, "Unknown mode %s\n", verb)
+		printHelpAndExit()
+	}
+
+	configPath := "/etc/dnsproxy/dnsproxy.conf"
+
+	for i := 2; i < len(os.Args); i++ {
 		arg := os.Args[i]
 
-		if arg == "-c" || arg == "--certificate" {
+		if arg == "-c" || arg == "--config" {
 			if i == len(os.Args)-1 {
 				fmt.Fprintf(os.Stderr, "Argument %s requires a parameters\n", arg)
 				printHelpAndExit()
 			}
-			dnsproxy.CertPath = os.Args[i+1]
+			configPath = os.Args[i+1]
 			i++
-		} else if arg == "-k" || arg == "--key" {
-			if i == len(os.Args)-1 {
-				fmt.Fprintf(os.Stderr, "Argument %s requires a parameters\n", arg)
-				printHelpAndExit()
-			}
-			dnsproxy.KeyPath = os.Args[i+1]
-			i++
-		} else if arg == "-s" || arg == "--server" {
-			if i == len(os.Args)-1 {
-				fmt.Fprintf(os.Stderr, "Argument %s requires a parameters\n", arg)
-				printHelpAndExit()
-			}
-			dnsproxy.DNSServerAddr = os.Args[i+1]
-			i++
-		} else if arg == "-l" || arg == "--log-file" {
-			if i == len(os.Args)-1 {
-				fmt.Fprintf(os.Stderr, "Argument %s requires a parameters\n", arg)
-				printHelpAndExit()
-			}
-			dnsproxy.LogPath = os.Args[i+1]
-			i++
-		} else if arg == "--https-port" {
-			if i == len(os.Args)-1 {
-				fmt.Fprintf(os.Stderr, "Argument %s requires a parameters\n", arg)
-				printHelpAndExit()
-			}
-			if _, err := strconv.ParseUint(os.Args[i+1], 10, 16); err != nil {
-				fmt.Fprintf(os.Stderr, "Invalid value for %s\n", arg)
-				printHelpAndExit()
-			}
-			dnsproxy.HTTPSPort = os.Args[i+1]
-			i++
-		} else if arg == "--tls-port" {
-			if i == len(os.Args)-1 {
-				fmt.Fprintf(os.Stderr, "Argument %s requires a parameters\n", arg)
-				printHelpAndExit()
-			}
-			if _, err := strconv.ParseUint(os.Args[i+1], 10, 16); err != nil {
-				fmt.Fprintf(os.Stderr, "Invalid value for %s\n", arg)
-				printHelpAndExit()
-			}
-			dnsproxy.TLSPort = os.Args[i+1]
-			i++
-		} else if arg == "-v" || arg == "--version" {
-			fmt.Printf("%s (Variant: %s-%s, Built on: %s, Revision: %s)\n", dnsproxy.Version, runtime.GOOS, runtime.GOARCH, dnsproxy.BuiltOn, dnsproxy.Revision)
-			os.Exit(0)
 		} else {
 			fmt.Fprintf(os.Stderr, "Unknown argument %s\n", arg)
 			printHelpAndExit()
 		}
+	}
+
+	if testOnly {
+		dnsproxy.TestConfig(configPath)
+		fmt.Println("dnsproxy configuration is valid")
+		os.Exit(0)
 	}
 
 	halt := make(chan os.Signal, 1)
@@ -136,6 +107,6 @@ func main() {
 		dnsproxy.RotateLog()
 	}()
 
-	dnsproxy.Start()
+	dnsproxy.Start(configPath)
 	dnsproxy.Stop()
 }

@@ -6,8 +6,7 @@ After=network.target
 [Service]
 Type=simple
 User=root
-WorkingDirectory=/opt/dnsproxy/
-ExecStart=/opt/dnsproxy/dnsproxy
+ExecStart=/usr/sbin/dnsproxy server
 TimeoutSec=5000
 Restart=on-failure
 
