@@ -26,6 +26,12 @@ jobs:
       - name: Build
         run: DOCKER_CMD=docker ./release.sh $(cat dnsproxy.version)
 
+      - name: Publish RPM
+        run: |
+          cd artifacts
+          export RPM_NAME="dnsproxy-$(cat dnsproxy.version)-1.x86_64.rpm"
+          curl -u ${{ secrets.PACKIT_USERNAME }}:${{ secrets.PACKIT_API_KEY }} -F "action=new" -F "file=@${RPM_NAME}" https://pkg.ecn.io/admin/packages
+
       - name: Upload Artifacts (1/2)
         uses: actions/upload-artifact@v4
         with:
