@@ -1,4 +1,4 @@
-name: Go
+name: "Build & Test"
 
 on:
   push:
@@ -16,30 +16,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
+        id: checkout
         uses: actions/checkout@v4
 
       - name: Set up Go
+        id: install_go
         uses: actions/setup-go@v5
         with:
           go-version: "stable"
 
       - name: Build
-        run: DOCKER_CMD=docker ./release.sh $(cat dnsproxy.version)
-
-      - name: Publish RPM
+        id: build
         run: |
-          cd artifacts
-          export RPM_NAME="dnsproxy-$(cat dnsproxy.version)-1.x86_64.rpm"
-          curl -u ${{ secrets.PACKIT_USERNAME }}:${{ secrets.PACKIT_API_KEY }} -F "action=new" -F "file=@${RPM_NAME}" https://pkg.ecn.io/admin/packages
+          go build -v ./...
 
-      - name: Upload Artifacts (1/2)
-        uses: actions/upload-artifact@v4
-        with:
-          name: dnsproxy-linux-amd64.gz
-          path: artifacts/*.gz
-
-      - name: Upload Artifacts (2/2)
-        uses: actions/upload-artifact@v4
-        with:
-          name: dnsproxy-linux-amd64.rpm
-          path: artifacts/*.rpm
+      - name: Test
+        id: test
+        run: |
+          go test -v ./...
