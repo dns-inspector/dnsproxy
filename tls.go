@@ -95,5 +95,7 @@ func handleTlsConn(conn net.Conn) {
 		logf("tls", "trace", conn.RemoteAddr().String(), "", "message: %02x reply: %02x", message, reply)
 	}
 
+	logf("tls", "stats", "", "", "message proxied")
+
 	conn.Write(reply)
 }

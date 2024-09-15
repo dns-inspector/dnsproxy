@@ -113,6 +113,7 @@ func (s *httpServer) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 		if serverConfig.Verbosity >= 3 {
 			logf("https", "trace", r.RemoteAddr, useragent, "message: %02x reply: %02x", message, reply)
 		}
+		logf("https", "stats", "", "", "message proxied")
 		rw.Header().Set("Content-Type", "application/dns-message")
 		rw.Header().Set("Content-Length", fmt.Sprintf("%d", len(reply[2:])))
 		rw.WriteHeader(200)
