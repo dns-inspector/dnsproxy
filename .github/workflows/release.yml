@@ -17,6 +17,19 @@ jobs:
         id: checkout
         uses: actions/checkout@v4
 
+      - name: Validate version
+        id: validate_version
+        run: |
+          TAG_NAME="${{ github.ref_name }}"
+          VERSION="$(cat dnsproxy.version)"
+
+          echo "Tag name: ${TAG_NAME}, version: ${VERSION}"
+
+          if [[ "${TAG_NAME}" != "${VERSION}" ]]; then
+            echo "::error file=dnsproxy.version,line=1::Tag name does not match version file"
+            exit 1
+          fi
+
       - name: Set up Go
         id: install_go
         uses: actions/setup-go@v5
