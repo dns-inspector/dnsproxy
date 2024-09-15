@@ -50,8 +50,8 @@ func (c tServerConfig) Validate() (errors []string) {
 		if err != nil {
 			errors = append(errors, fmt.Sprintf("invalid http request: %s", err.Error()))
 		}
-		if u.Scheme != "http:" && u.Scheme != "https:" {
-			errors = append(errors, "invalid http request: unsupported scheme")
+		if u.Scheme != "http" && u.Scheme != "https" {
+			errors = append(errors, fmt.Sprintf("invalid http request: unsupported scheme %s", u.Scheme))
 		}
 	}
 
