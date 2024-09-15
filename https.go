@@ -68,6 +68,14 @@ func (s *httpServer) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 				rw.Write([]byte("invalid base64 value in dns query"))
 				return
 			}
+			if len(m) <= 12 {
+				if serverConfig.Verbosity >= 2 {
+					logf("https", "warn", r.RemoteAddr, useragent, "invalid base64 data in dns query")
+				}
+				rw.WriteHeader(400)
+				rw.Write([]byte("invalid base64 value in dns query"))
+				return
+			}
 			message = m
 		} else if r.Method == "POST" {
 			if r.ContentLength > 4096 {
