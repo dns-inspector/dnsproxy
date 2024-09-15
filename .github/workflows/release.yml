@@ -45,7 +45,7 @@ jobs:
         run: |
           cd artifacts
           export RPM_NAME="dnsproxy-$(cat ../dnsproxy.version)-1.x86_64.rpm"
-          curl -u ${{ secrets.PACKIT_USERNAME }}:${{ secrets.PACKIT_API_KEY }} -F "action=new" -F "file=@${RPM_NAME}" https://pkg.ecn.io/admin/packages
+          curl -u ${{ secrets.PACKIT_USERNAME }}:${{ secrets.PACKIT_API_KEY }} --fail-with-body -F "action=new" -F "file=@${RPM_NAME}" https://pkg.ecn.io/admin/packages
 
       - name: Upload Artifacts (1/2)
         id: artifacts_1
