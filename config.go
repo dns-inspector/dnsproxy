@@ -42,6 +42,7 @@ type tServerConfig struct {
 	HTTPSPort     uint16
 	TLSPort       uint16
 	HTTPRedirect  string
+	ServerName    string
 }
 
 func (c tServerConfig) Validate() (errors []string) {
@@ -134,6 +135,8 @@ func loadConfig(configPath string) (*tServerConfig, []string) {
 			config.TLSPort = tlsport
 		case "http_redirect":
 			config.HTTPRedirect = value
+		case "server_name":
+			config.ServerName = value
 		default:
 			continue
 		}

@@ -225,7 +225,16 @@ func logf(proto, level, ip, useragent, format string, args ...any) {
 		message = format
 	}
 
-	line := []byte(fmt.Sprintf("%s,%s,%s,%s,%s,%s\n", time.Now().UTC().Format("2006-01-02T15:04:05-0700"), level, proto, ip, csvEscape(useragent), csvEscape(message)))
+	values := []string{
+		time.Now().UTC().Format("2006-01-02T15:04:05-0700"),
+		csvEscape(serverConfig.ServerName),
+		level,
+		proto,
+		ip,
+		csvEscape(useragent),
+		csvEscape(message),
+	}
+	line := []byte(strings.Join(values, ",") + "\n")
 	os.Stdout.Write(line)
 	if logFile != nil {
 		logLock.Lock()
