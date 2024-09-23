@@ -1,20 +1,34 @@
 package main
 
 import (
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	cryptorand "crypto/rand"
 	"crypto/tls"
+	"crypto/x509"
+	"crypto/x509/pkix"
 	"encoding/base64"
 	"encoding/binary"
+	"encoding/pem"
 	"fmt"
 	"io"
-	"math/rand/v2"
+	"math/big"
+	mathrand "math/rand/v2"
+	"net"
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"golang.org/x/net/dns/dnsmessage"
 )
 
 func main() {
+	if len(os.Args) == 2 && os.Args[1] == "--setup-pki" {
+		setupPki()
+		return
+	}
+
 	if len(os.Args) != 4 {
 		os.Exit(1)
 	}
@@ -37,7 +51,7 @@ func main() {
 
 	buf := make([]byte, 2, 514)
 	builder := dnsmessage.NewBuilder(buf, dnsmessage.Header{
-		ID:               uint16(rand.IntN(65535)),
+		ID:               uint16(mathrand.IntN(65535)),
 		OpCode:           0,
 		RecursionDesired: true,
 	})
@@ -151,4 +165,49 @@ func printReply(reply []byte) {
 		fmt.Println(a.GoString())
 	}
 	fmt.Println("")
+}
+
+func setupPki() {
+	pKey, err := ecdsa.GenerateKey(elliptic.P384(), cryptorand.Reader)
+	if err != nil {
+		panic(err)
+	}
+
+	pub := &pKey.PublicKey
+	serial := big.NewInt(1)
+
+	privateKeyBytes, err := x509.MarshalECPrivateKey(pKey)
+	if err != nil {
+		panic(err)
+	}
+
+	tpl := &x509.Certificate{
+		SerialNumber:          serial,
+		Subject:               pkix.Name{CommonName: "localhost"},
+		Issuer:                pkix.Name{CommonName: "localhost"},
+		NotBefore:             time.Now().UTC().AddDate(0, 0, -1),
+		NotAfter:              time.Now().UTC().AddDate(1, 0, 0),
+		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment,
+		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
+		BasicConstraintsValid: true,
+		DNSNames:              []string{"localhost"},
+		IPAddresses: []net.IP{
+			net.IPv4(127, 0, 0, 1),
+			net.IPv6loopback,
+		},
+	}
+
+	certBytes, err := x509.CreateCertificate(cryptorand.Reader, tpl, tpl, pub, pKey)
+	if err != nil {
+		panic(err)
+	}
+
+	os.WriteFile("localhost.crt", pem.EncodeToMemory(&pem.Block{
+		Type:  "CERTIFICATE",
+		Bytes: certBytes,
+	}), 0644)
+	os.WriteFile("localhost.key", pem.EncodeToMemory(&pem.Block{
+		Type:  "EC PRIVATE KEY",
+		Bytes: privateKeyBytes,
+	}), 0644)
 }

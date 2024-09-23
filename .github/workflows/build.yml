@@ -30,7 +30,28 @@ jobs:
         run: |
           go build -v ./...
 
-      - name: Test
-        id: test
+      - name: Perform Unit Tests
+        id: unit_tests
         run: |
           go test -v ./...
+      
+      - name: Setup Functional Tests
+        id: setup_functional_tests
+        run: |
+          cd cmd/proxytest
+          go build
+          cd ../../
+          mv cmd/proxytest/proxytest .
+          ./proxytest --setup-pki
+          cd cmd/dnsproxy
+          go build
+          cd ../../
+          mv cmd/dnsproxy/dnsproxy .
+      
+      - name: Perform Functional Tests
+        id: functional_tests
+        run: |
+          nohup ./dnsproxy server -c dnsproxy_test.conf &
+          sleep 1
+          ./proxytest https://localhost:8443/dns-query a example.com. | grep '{93, 184, 215, 14}'
+          ./proxytest localhost:8853 aaaa example.com. | grep '{38, 6, 40, 0, 2, 31, 203, 7, 104, 32, 128, 218, 175, 107, 139, 44}'
