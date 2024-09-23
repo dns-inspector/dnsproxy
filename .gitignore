@@ -1,5 +1,7 @@
 cmd/dnsproxy/*
 !cmd/dnsproxy/*.go
+cmd/proxytest/*
+!cmd/proxytest/*.go
 artifacts/
 .DS_Store
 rpm/rpms
