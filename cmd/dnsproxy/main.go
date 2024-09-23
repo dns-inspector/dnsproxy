@@ -100,7 +100,7 @@ func main() {
 	signal.Notify(halt, syscall.SIGINT, syscall.SIGTERM)
 	go func() {
 		<-halt
-		dnsproxy.Stop()
+		dnsproxy.Stop(false)
 		os.Exit(1)
 	}()
 
@@ -109,7 +109,7 @@ func main() {
 	go func() {
 		for {
 			<-reload
-			dnsproxy.Stop()
+			dnsproxy.Stop(true)
 		}
 	}()
 
@@ -122,5 +122,11 @@ func main() {
 		}
 	}()
 
-	dnsproxy.Start(configPath)
+	for {
+		shouldRestart, err := dnsproxy.Start(configPath)
+		if !shouldRestart {
+			fmt.Fprintf(os.Stderr, "%s\n", err.Error())
+			os.Exit(1)
+		}
+	}
 }

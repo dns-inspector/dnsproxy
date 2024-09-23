@@ -28,6 +28,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"golang.org/x/sync/errgroup"
 )
 
 var (
@@ -46,7 +48,12 @@ var (
 	listenerHTTPS6 net.Listener
 )
 
-func Start(configPath string) {
+var (
+	serverShouldRestart = false
+	restartLock         = &sync.Mutex{}
+)
+
+func Start(configPath string) (bool, error) {
 	serverConfig = mustLoadConfig(configPath)
 
 	if f, err := os.OpenFile(serverConfig.LogPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644); err == nil {
@@ -55,96 +62,80 @@ func Start(configPath string) {
 
 	cert, err := tls.LoadX509KeyPair(serverConfig.CertPath, serverConfig.KeyPath)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error loading certificate or private key: %s\n", err.Error())
-		os.Exit(1)
+		return false, fmt.Errorf("unable to load certificate or private key: %s", err.Error())
 	}
 
 	c := &tls.Config{
 		Certificates: []tls.Certificate{cert},
 	}
 
-	failed := make(chan uint8)
-	defer stop()
+	wg := &errgroup.Group{}
+	wg.SetLimit(4)
 
-	go func() {
+	wg.Go(func() error {
 		l, err := tls.Listen("tcp4", fmt.Sprintf("0.0.0.0:%d", serverConfig.TLSPort), c)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error starting IPv4 TLS server: %s\n", err.Error())
-			failed <- 1
+			return fmt.Errorf("unable to start IPv4 TLS server: %s", err.Error())
 		}
 		listenerTLS4 = l
 
-		if err := tlsServer(l); err != nil {
-			if !strings.Contains(err.Error(), "use of closed network connection") {
-				fmt.Fprintf(os.Stderr, "Error starting IPv4 TLS server: %s\n", err.Error())
-			}
-			failed <- 1
-		}
-	}()
+		return tlsServer(l)
+	})
 
-	go func() {
-		l, err := tls.Listen("tcp6", fmt.Sprintf("[::]:%d", serverConfig.TLSPort), c)
+	wg.Go(func() error {
+		l, err := tls.Listen("tcp6", fmt.Sprintf("[::]%d", serverConfig.TLSPort), c)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error starting IPv6 TLS server: %s\n", err.Error())
-			failed <- 1
+			return fmt.Errorf("unable to start IPv6 TLS server: %s", err.Error())
 		}
-		listenerTLS6 = l
+		listenerTLS4 = l
 
-		if err := tlsServer(l); err != nil {
-			if !strings.Contains(err.Error(), "use of closed network connection") {
-				fmt.Fprintf(os.Stderr, "Error starting IPv6 TLS server: %s\n", err.Error())
-			}
-			failed <- 1
-		}
-	}()
+		return tlsServer(l)
+	})
 
-	go func() {
+	wg.Go(func() error {
 		l, err := tls.Listen("tcp4", fmt.Sprintf("0.0.0.0:%d", serverConfig.HTTPSPort), c)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error starting IPv4 HTTPS server: %s\n", err.Error())
-			failed <- 1
+			return fmt.Errorf("unable to start IPv4 HTTPS server: %s", err.Error())
 		}
 		listenerHTTPS4 = l
 
-		if err := http.Serve(l, &httpServer{}); err != nil {
-			if !strings.Contains(err.Error(), "use of closed network connection") {
-				fmt.Fprintf(os.Stderr, "Error starting IPv4 HTTPS server: %s\n", err.Error())
-			}
-			failed <- 1
-		}
-	}()
+		return http.Serve(l, &httpServer{})
+	})
 
-	go func() {
+	wg.Go(func() error {
 		l, err := tls.Listen("tcp6", fmt.Sprintf("[::]:%d", serverConfig.HTTPSPort), c)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error starting IPv6 HTTPS server: %s\n", err.Error())
-			failed <- 1
+			return fmt.Errorf("unable to start IPv6 HTTPS server: %s", err.Error())
 		}
-		listenerHTTPS6 = l
+		listenerHTTPS4 = l
 
-		if err := http.Serve(l, &httpServer{}); err != nil {
-			if !strings.Contains(err.Error(), "use of closed network connection") {
-				fmt.Fprintf(os.Stderr, "Error starting IPv6 HTTPS server: %s\n", err.Error())
-			}
-			failed <- 1
-		}
-	}()
+		return http.Serve(l, &httpServer{})
+	})
 
 	if serverConfig.Verbosity >= 2 {
 		logf("main", "info", "", "", "Server started")
 	}
-	<-failed
+
+	listenErr := wg.Wait()
+	restartLock.Lock()
+	shouldRestart := serverShouldRestart
+	restartLock.Unlock()
+	return shouldRestart, listenErr
 }
 
-func Stop() {
+func Stop(restart bool) {
 	if serverConfig.Verbosity >= 2 {
 		logf("main", "info", "", "", "Server stopped")
 	}
 
-	stop()
+	stop(restart)
 }
 
-func stop() {
+func stop(restart bool) {
+	restartLock.Lock()
+	serverShouldRestart = restart
+	restartLock.Unlock()
+
 	if logFile != nil {
 		logLock.Lock()
 		logFile.Sync()
