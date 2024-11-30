@@ -11,7 +11,7 @@ permissions:
   contents: read
 
 jobs:
-  build:
+  build_debug:
     name: "Build & Test"
     runs-on: ubuntu-latest
     steps:
@@ -19,25 +19,26 @@ jobs:
         id: checkout
         uses: actions/checkout@v4
         with:
+          fetch-tags: true
           persist-credentials: false
 
-      - name: Set up Go
+      - name: "Set up Go"
         id: install_go
         uses: actions/setup-go@v5
         with:
           go-version: "stable"
 
-      - name: Build
+      - name: "Build (Debug)"
         id: build
         run: |
           go build -v ./...
 
-      - name: Perform Unit Tests
+      - name: "Perform Unit Tests"
         id: unit_tests
         run: |
           go test -v ./...
       
-      - name: Setup Functional Tests
+      - name: "Setup Functional Tests"
         id: setup_functional_tests
         run: |
           cd cmd/proxytest
@@ -50,10 +51,72 @@ jobs:
           cd ../../
           mv cmd/dnsproxy/dnsproxy .
       
-      - name: Perform Functional Tests
+      - name: "Perform Functional Tests"
         id: functional_tests
         run: |
           nohup ./dnsproxy server -c dnsproxy_test.conf &
           sleep 1
           ./proxytest https://localhost:8443/dns-query a example.com. | grep '{93, 184, 215, 14}'
           ./proxytest localhost:8853 aaaa example.com. | grep '{38, 6, 40, 0, 2, 31, 203, 7, 104, 32, 128, 218, 175, 107, 139, 44}'
+
+  build_release:
+    name: "Release Build & Publish"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        id: checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-tags: true
+          persist-credentials: false
+
+      - name: Prepare
+        id: prepare
+        run: |
+          echo "version=$(git --no-pager tag --points-at HEAD)" >> "$GITHUB_OUTPUT"
+          echo "build_date=$(date -R)" >> "$GITHUB_OUTPUT"
+
+      - name: Validate version
+        id: validate_version
+        if: steps.prepare.outputs.version != ''
+        run: |
+          TAG_NAME="$(git --no-pager tag --points-at HEAD)"
+          VERSION="$(cat dnsproxy.version)"
+
+          echo "Tag name: ${TAG_NAME}, version: ${VERSION}"
+
+          if [[ "${TAG_NAME}" != "${VERSION}" ]]; then
+            echo "::error file=dnsproxy.version,line=1::Tag name does not match version file"
+            exit 1
+          fi
+
+      - name: "Build (Debug)"
+        id: build_rpm
+        if: steps.prepare.outputs.version != ''
+        run: DOCKER_CMD=docker ./release.sh $(cat dnsproxy.version)
+
+      - name: "Publish RPM"
+        id: upload_rpm
+        if: steps.prepare.outputs.version != ''
+        run: |
+          cd artifacts
+          export RPM_NAME="dnsproxy-$(cat ../dnsproxy.version)-1.x86_64.rpm"
+          curl -u ${{ secrets.PACKIT_USERNAME }}:${{ secrets.PACKIT_API_KEY }} --fail-with-body -F "action=new" -F "file=@${RPM_NAME}" https://pkg.ecn.io/admin/packages
+
+      - name: "Upload Artifacts (1/2)"
+        id: artifacts_1
+        if: steps.prepare.outputs.version != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: dnsproxy-linux-amd64.gz
+          path: artifacts/*.gz
+          compression-level: 0
+
+      - name: "Upload Artifacts (2/2)"
+        id: artifacts_2
+        if: steps.prepare.outputs.version != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: dnsproxy-linux-amd64.rpm
+          path: artifacts/*.rpm
+          compression-level: 0
