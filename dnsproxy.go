@@ -84,7 +84,7 @@ func Start(configPath string) (bool, error) {
 	}()
 
 	go func() {
-		l, err := tls.Listen("tcp6", fmt.Sprintf("[::]%d", serverConfig.TLSPort), c)
+		l, err := tls.Listen("tcp6", fmt.Sprintf("[::]:%d", serverConfig.TLSPort), c)
 		if err != nil {
 			listenErr <- fmt.Errorf("unable to start IPv6 TLS server: %s", err.Error())
 			return
