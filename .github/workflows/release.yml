@@ -17,6 +17,7 @@ jobs:
         id: checkout
         uses: actions/checkout@v4
         with:
+          fetch-tags: true
           persist-credentials: false
 
       - name: Validate version
