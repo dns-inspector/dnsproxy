@@ -16,11 +16,13 @@ jobs:
       - name: Checkout
         id: checkout
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Validate version
         id: validate_version
         run: |
-          TAG_NAME="${{ github.ref_name }}"
+          TAG_NAME="$(git describe)"
           VERSION="$(cat dnsproxy.version)"
 
           echo "Tag name: ${TAG_NAME}, version: ${VERSION}"
