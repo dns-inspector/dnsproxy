@@ -29,7 +29,7 @@ import (
 	"sync"
 	"time"
 
-	"golang.org/x/sync/errgroup"
+	"github.com/ecnepsnai/sdnotify"
 )
 
 var (
@@ -69,58 +69,73 @@ func Start(configPath string) (bool, error) {
 		Certificates: []tls.Certificate{cert},
 	}
 
-	wg := &errgroup.Group{}
-	wg.SetLimit(4)
+	listenErr := make(chan error, 1)
 
-	wg.Go(func() error {
+	go func() {
 		l, err := tls.Listen("tcp4", fmt.Sprintf("0.0.0.0:%d", serverConfig.TLSPort), c)
 		if err != nil {
-			return fmt.Errorf("unable to start IPv4 TLS server: %s", err.Error())
+			listenErr <- fmt.Errorf("unable to start IPv4 TLS server: %s", err.Error())
+			return
 		}
 		listenerTLS4 = l
 
-		return tlsServer(l)
-	})
+		listenErr <- tlsServer(l)
+		return
+	}()
 
-	wg.Go(func() error {
+	go func() {
 		l, err := tls.Listen("tcp6", fmt.Sprintf("[::]%d", serverConfig.TLSPort), c)
 		if err != nil {
-			return fmt.Errorf("unable to start IPv6 TLS server: %s", err.Error())
+			listenErr <- fmt.Errorf("unable to start IPv6 TLS server: %s", err.Error())
+			return
 		}
 		listenerTLS4 = l
 
-		return tlsServer(l)
-	})
+		listenErr <- tlsServer(l)
+		return
+	}()
 
-	wg.Go(func() error {
+	go func() {
 		l, err := tls.Listen("tcp4", fmt.Sprintf("0.0.0.0:%d", serverConfig.HTTPSPort), c)
 		if err != nil {
-			return fmt.Errorf("unable to start IPv4 HTTPS server: %s", err.Error())
+			listenErr <- fmt.Errorf("unable to start IPv4 HTTPS server: %s", err.Error())
+			return
 		}
 		listenerHTTPS4 = l
 
-		return http.Serve(l, &httpServer{})
-	})
+		listenErr <- http.Serve(l, &httpServer{})
+		return
+	}()
 
-	wg.Go(func() error {
+	go func() {
 		l, err := tls.Listen("tcp6", fmt.Sprintf("[::]:%d", serverConfig.HTTPSPort), c)
 		if err != nil {
-			return fmt.Errorf("unable to start IPv6 HTTPS server: %s", err.Error())
+			listenErr <- fmt.Errorf("unable to start IPv6 HTTPS server: %s", err.Error())
+			return
 		}
 		listenerHTTPS4 = l
 
-		return http.Serve(l, &httpServer{})
-	})
+		listenErr <- http.Serve(l, &httpServer{})
+		return
+	}()
 
 	if serverConfig.Verbosity >= 2 {
 		logf("main", "info", "", "", "Server started")
 	}
 
-	listenErr := wg.Wait()
-	restartLock.Lock()
-	shouldRestart := serverShouldRestart
-	restartLock.Unlock()
-	return shouldRestart, listenErr
+	sdnotify.Ready()
+
+	for {
+		select {
+		case err := <-listenErr:
+			restartLock.Lock()
+			shouldRestart := serverShouldRestart
+			restartLock.Unlock()
+			return shouldRestart, err
+		case <-time.After(1 * time.Second):
+			sdnotify.Watchdog()
+		}
+	}
 }
 
 func Stop(restart bool) {
@@ -134,6 +149,11 @@ func Stop(restart bool) {
 func stop(restart bool) {
 	restartLock.Lock()
 	serverShouldRestart = restart
+	if restart {
+		sdnotify.Reloading()
+	} else {
+		sdnotify.Stopping()
+	}
 	restartLock.Unlock()
 
 	if logFile != nil {

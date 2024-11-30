@@ -1,4 +1,4 @@
+github.com/ecnepsnai/sdnotify v1.0.0 h1:3fWha4w2K2fMlbo2ZKFnmVduxinGH0TdlKRyqM+2s90=
+github.com/ecnepsnai/sdnotify v1.0.0/go.mod h1:azJ0AoGHF0V1P2/0TC+BDVO2F95KpX9L2O3TyGm/Gi0=
 golang.org/x/net v0.31.0 h1:68CPQngjLL0r2AlUKiSxtQFKvzRVbnzLwMUn5SzcLHo=
 golang.org/x/net v0.31.0/go.mod h1:P4fl1q7dY2hnZFxEk4pPSkDHF+QqjitcnDjUQyMM+pM=
-golang.org/x/sync v0.9.0 h1:fEo0HyrW1GIgZdpbhCRO0PkJajUS5H9IFUztCgEo2jQ=
-golang.org/x/sync v0.9.0/go.mod h1:Czt+wKu1gCyEFDUtn0jG5QVvpJ6rzVqr5aXyt9drQfk=
