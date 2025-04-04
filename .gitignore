@@ -6,6 +6,7 @@ artifacts/
 .DS_Store
 package/rpm/rpms
 package/rpm/*.tar.gz
+package/deb/workdir
 *.csv
 *.crt
 *.key

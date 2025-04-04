@@ -1,0 +1,17 @@
+[Unit]
+Description=DNS Proxy
+After=syslog.target
+After=network.target
+
+[Service]
+Type=notify
+User=root
+ExecStart=/usr/sbin/dnsproxy server
+ExecReload=/bin/kill -USR2 "$MAINPID"
+TimeoutSec=5000
+Restart=on-failure
+NotifyAccess=main
+WatchdogSec=5
+
+[Install]
+WantedBy=multi-user.target

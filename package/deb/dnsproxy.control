@@ -1,0 +1,7 @@
+Package: dnsproxy
+Version: %%VERSION%%
+Architecture: %%ARCH%%
+Maintainer: The DNS Inspector Team <hello@dns-inspector.com>
+Description: DNS Proxy for DNS over HTTPS and DNS over TLS
+Build-Depends: dh-systemd (>= 1.5)
+Webpage: https://github.com/dns-inspector/dnsproxy
