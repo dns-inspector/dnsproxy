@@ -2,5 +2,5 @@ github.com/ecnepsnai/sdnotify v1.0.0 h1:3fWha4w2K2fMlbo2ZKFnmVduxinGH0TdlKRyqM+2
 github.com/ecnepsnai/sdnotify v1.0.0/go.mod h1:azJ0AoGHF0V1P2/0TC+BDVO2F95KpX9L2O3TyGm/Gi0=
 github.com/ecnepsnai/zbx v1.2.0 h1:hSAF8Q91Tqn1ypJJtGukc2yIrcuQCKeWFK6xAzVeAi0=
 github.com/ecnepsnai/zbx v1.2.0/go.mod h1:y+HfyKoJh5gGLKQhH6WsEJByyjB/pzC9d74NsOxIRGc=
-golang.org/x/net v0.31.0 h1:68CPQngjLL0r2AlUKiSxtQFKvzRVbnzLwMUn5SzcLHo=
-golang.org/x/net v0.31.0/go.mod h1:P4fl1q7dY2hnZFxEk4pPSkDHF+QqjitcnDjUQyMM+pM=
+golang.org/x/net v0.38.0 h1:vRMAPTMaeGqVhG5QyLJHqNDwecKTomGeqbnfZyKlBI8=
+golang.org/x/net v0.38.0/go.mod h1:ivrbrMbzFq5J41QOQh0siUuly180yBYtLp+CKbEaFx8=
