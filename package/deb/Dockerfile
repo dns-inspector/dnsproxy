@@ -2,9 +2,9 @@ FROM docker.io/library/debian:stable
 
 RUN apt-get -y update && \
     apt-get -y upgrade && \
-    apt-get -y install curl
+    apt-get -y install gzip
 
-VOLUME [ "/dnsproxy" ]
+VOLUME [ "/workdir" ]
 WORKDIR /
 
 ADD entrypoint.sh /entrypoint.sh

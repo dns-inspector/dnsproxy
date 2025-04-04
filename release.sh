@@ -19,4 +19,4 @@ mv rpms/x86_64/*.rpm ../../artifacts
 
 cd ../../package/deb
 ./build.sh ${VERSION}
-mv debs/x86_64/*.deb ../../artifacts
+mv workdir/*.deb ../../artifacts
