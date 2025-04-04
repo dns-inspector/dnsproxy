@@ -19,6 +19,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 package dnsproxy
 
 import (
+	"dnsproxy/monitoring"
 	"encoding/binary"
 	"net"
 )
@@ -36,6 +37,7 @@ func tlsServer(l net.Listener) error {
 func handleTlsConn(conn net.Conn) {
 	defer func() {
 		if r := recover(); r != nil {
+			monitoring.RecordPanicRecover()
 			conn.Close()
 			if serverConfig.Verbosity >= 1 {
 				logf("tls", "error", "", "", "handleTlsConn: recovered from panic: %s", r)
@@ -54,6 +56,7 @@ func handleTlsConn(conn net.Conn) {
 		if serverConfig.Verbosity >= 2 {
 			logf("tls", "warn", conn.RemoteAddr().String(), "", "error reading message: %s", err.Error())
 		}
+		monitoring.RecordQueryDotError()
 		return
 	}
 	size := binary.BigEndian.Uint16(rawSize)
@@ -62,6 +65,7 @@ func handleTlsConn(conn net.Conn) {
 			logf("tls", "warn", conn.RemoteAddr().String(), "", "request too large: %d", size)
 		}
 		conn.Write([]byte("request too large"))
+		monitoring.RecordQueryDotError()
 		return
 	}
 
@@ -71,6 +75,7 @@ func handleTlsConn(conn net.Conn) {
 		if serverConfig.Verbosity >= 2 {
 			logf("tls", "warn", conn.RemoteAddr().String(), "", "error reading message: %s", err.Error())
 		}
+		monitoring.RecordQueryDotError()
 		return
 	}
 	if read != int(size) {
@@ -78,6 +83,7 @@ func handleTlsConn(conn net.Conn) {
 			logf("tls", "warn", conn.RemoteAddr().String(), "", "invalid message size")
 		}
 		conn.Write([]byte("invalid message size"))
+		monitoring.RecordQueryDotError()
 		return
 	}
 
@@ -88,6 +94,7 @@ func handleTlsConn(conn net.Conn) {
 		if serverConfig.Verbosity >= 1 {
 			logf("tls", "error", conn.RemoteAddr().String(), "", "error proxying message: %s", err.Error())
 		}
+		monitoring.RecordQueryDotError()
 		return
 	}
 
@@ -96,6 +103,6 @@ func handleTlsConn(conn net.Conn) {
 	}
 
 	logf("tls", "stats", "", "", "message proxied")
-
+	monitoring.RecordQueryDotForward()
 	conn.Write(reply)
 }

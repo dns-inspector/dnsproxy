@@ -9,7 +9,7 @@ DOCKER_CMD=${DOCKER:-"podman"}
 rm -rf dnsproxy-${VERSION}
 mkdir dnsproxy-${VERSION}
 
-cp -r dnsproxy.service ../cmd ../*.go ../go.mod ../go.sum ../dnsproxy.conf dnsproxy-${VERSION}
+cp -r dnsproxy.service ../cmd ../*.go ../monitoring ../go.mod ../go.sum ../dnsproxy.conf dnsproxy-${VERSION}
 tar -czf dnsproxy-${VERSION}.tar.gz dnsproxy-${VERSION}
 rm -rf dnsproxy-${VERSION}
 

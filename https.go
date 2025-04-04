@@ -19,6 +19,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 package dnsproxy
 
 import (
+	"dnsproxy/monitoring"
 	"encoding/base64"
 	"encoding/binary"
 	"fmt"
@@ -31,6 +32,7 @@ type httpServer struct{}
 func (s *httpServer) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	defer func() {
 		if r := recover(); r != nil {
+			monitoring.RecordPanicRecover()
 			if serverConfig.Verbosity >= 1 {
 				logf("https", "error", "", "", "ServeHTTP: recovered from panic: %s", r)
 			}
@@ -55,6 +57,7 @@ func (s *httpServer) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 				if serverConfig.Verbosity >= 2 {
 					logf("https", "warn", r.RemoteAddr, useragent, "missing dns query in url")
 				}
+				monitoring.RecordQueryDohError()
 				rw.WriteHeader(400)
 				rw.Write([]byte("missing dns query in url"))
 				return
@@ -64,6 +67,7 @@ func (s *httpServer) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 				if serverConfig.Verbosity >= 2 {
 					logf("https", "warn", r.RemoteAddr, useragent, "invalid base64 data in dns query")
 				}
+				monitoring.RecordQueryDohError()
 				rw.WriteHeader(400)
 				rw.Write([]byte("invalid base64 value in dns query"))
 				return
@@ -72,6 +76,7 @@ func (s *httpServer) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 				if serverConfig.Verbosity >= 2 {
 					logf("https", "warn", r.RemoteAddr, useragent, "invalid base64 data in dns query")
 				}
+				monitoring.RecordQueryDohError()
 				rw.WriteHeader(400)
 				rw.Write([]byte("invalid base64 value in dns query"))
 				return
@@ -82,17 +87,20 @@ func (s *httpServer) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 				if serverConfig.Verbosity >= 2 {
 					logf("https", "warn", r.RemoteAddr, useragent, "message too large")
 				}
+				monitoring.RecordQueryDohError()
 				rw.WriteHeader(400)
 				rw.Write([]byte("message too large"))
 				return
 			}
 			m, err := io.ReadAll(r.Body)
 			if err != nil {
+				monitoring.RecordQueryDohError()
 				rw.WriteHeader(500)
 				return
 			}
 			message = m
 		} else {
+			monitoring.RecordQueryDohError()
 			rw.WriteHeader(405)
 			return
 		}
@@ -106,6 +114,7 @@ func (s *httpServer) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 			if serverConfig.Verbosity >= 1 {
 				logf("https", "error", r.RemoteAddr, useragent, "error proxying dns message: %s", err.Error())
 			}
+			monitoring.RecordQueryDohError()
 			rw.WriteHeader(500)
 			rw.Write([]byte("internal server error"))
 			return
@@ -114,6 +123,7 @@ func (s *httpServer) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 			logf("https", "trace", r.RemoteAddr, useragent, "message: %02x reply: %02x", message, reply)
 		}
 		logf("https", "stats", "", "", "message proxied")
+		monitoring.RecordQueryDohForward()
 		rw.Header().Set("Content-Type", "application/dns-message")
 		rw.Header().Set("Content-Length", fmt.Sprintf("%d", len(reply[2:])))
 		rw.WriteHeader(200)

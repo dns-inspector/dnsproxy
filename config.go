@@ -43,6 +43,7 @@ type tServerConfig struct {
 	TLSPort       uint16
 	HTTPRedirect  string
 	ServerName    string
+	ZabbixHost    *string
 }
 
 func (c tServerConfig) Validate() (errors []string) {
@@ -137,6 +138,8 @@ func loadConfig(configPath string) (*tServerConfig, []string) {
 			config.HTTPRedirect = value
 		case "server_name":
 			config.ServerName = value
+		case "zabbix_server":
+			*config.ZabbixHost = value
 		default:
 			continue
 		}

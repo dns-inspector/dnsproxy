@@ -20,6 +20,7 @@ package dnsproxy
 
 import (
 	"crypto/tls"
+	"dnsproxy/monitoring"
 	"encoding/binary"
 	"fmt"
 	"net"
@@ -67,6 +68,10 @@ func Start(configPath string) (bool, error) {
 
 	c := &tls.Config{
 		Certificates: []tls.Certificate{cert},
+	}
+
+	if serverConfig.ZabbixHost != nil && monitoring.Setup(serverConfig.ServerName, *serverConfig.ZabbixHost) == nil {
+		go monitoring.StartSendLoop()
 	}
 
 	listenErr := make(chan error, 1)
