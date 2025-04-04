@@ -13,6 +13,6 @@ GOOS=linux GOARCH=amd64 CGO_ENABLED=0 GOAMD64=v2 go build -ldflags="-s -w -X 'dn
 gzip dnsproxy
 mv dnsproxy.gz ../../artifacts/dnsproxy-${VERSION}-linux-amd64.gz
 
-cd ../../rpm
+cd ../../package/rpm
 ./build.sh ${VERSION}
-mv rpms/x86_64/*.rpm ../artifacts
+mv rpms/x86_64/*.rpm ../../artifacts

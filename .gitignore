@@ -4,8 +4,8 @@ cmd/proxytest/*
 !cmd/proxytest/*.go
 artifacts/
 .DS_Store
-rpm/rpms
-rpm/*.tar.gz
+package/rpm/rpms
+package/rpm/*.tar.gz
 *.csv
 *.crt
 *.key
