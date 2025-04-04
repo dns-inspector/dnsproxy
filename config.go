@@ -139,7 +139,7 @@ func loadConfig(configPath string) (*tServerConfig, []string) {
 		case "server_name":
 			config.ServerName = value
 		case "zabbix_server":
-			*config.ZabbixHost = value
+			config.ZabbixHost = &value
 		default:
 			continue
 		}
