@@ -80,7 +80,6 @@ func Start(configPath string) (bool, error) {
 		listenerTLS4 = l
 
 		listenErr <- tlsServer(l)
-		return
 	}()
 
 	go func() {
@@ -92,7 +91,6 @@ func Start(configPath string) (bool, error) {
 		listenerTLS4 = l
 
 		listenErr <- tlsServer(l)
-		return
 	}()
 
 	go func() {
@@ -104,7 +102,6 @@ func Start(configPath string) (bool, error) {
 		listenerHTTPS4 = l
 
 		listenErr <- http.Serve(l, &httpServer{})
-		return
 	}()
 
 	go func() {
@@ -116,7 +113,6 @@ func Start(configPath string) (bool, error) {
 		listenerHTTPS4 = l
 
 		listenErr <- http.Serve(l, &httpServer{})
-		return
 	}()
 
 	if serverConfig.Verbosity >= 2 {

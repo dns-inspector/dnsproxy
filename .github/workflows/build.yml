@@ -56,8 +56,8 @@ jobs:
         run: |
           nohup ./dnsproxy server -c dnsproxy_test.conf &
           sleep 1
-          ./proxytest https://localhost:8443/dns-query a example.com. | grep '{93, 184, 215, 14}'
-          ./proxytest localhost:8853 aaaa example.com. | grep '{38, 6, 40, 0, 2, 31, 203, 7, 104, 32, 128, 218, 175, 107, 139, 44}'
+          ./proxytest https://localhost:8443/dns-query a dns.google. | grep '{8, 8, 8, 8}'
+          ./proxytest localhost:8853 aaaa dns.google. | grep '{32, 1, 72, 96, 72, 96, 0, 0, 0, 0, 0, 0, 0, 0, 136, 68}'
 
   build_release:
     name: "Release Build & Publish"
@@ -95,28 +95,21 @@ jobs:
         if: steps.prepare.outputs.version != ''
         run: DOCKER_CMD=docker ./release.sh $(cat dnsproxy.version)
 
+      - name: "Upload Artifacts"
+        id: artifacts
+        if: steps.prepare.outputs.version != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: dnsproxy-linux-amd64.gz
+          path: |
+            artifacts/*.gz
+            artifacts/*.rpm
+          compression-level: 0
+
       - name: "Publish RPM"
         id: upload_rpm
         if: steps.prepare.outputs.version != ''
         run: |
           cd artifacts
           export RPM_NAME="dnsproxy-$(cat ../dnsproxy.version)-1.x86_64.rpm"
-          curl -u ${{ secrets.PACKIT_USERNAME }}:${{ secrets.PACKIT_API_KEY }} --fail-with-body -F "action=new" -F "file=@${RPM_NAME}" https://pkg.ecn.io/admin/packages
-
-      - name: "Upload Artifacts (1/2)"
-        id: artifacts_1
-        if: steps.prepare.outputs.version != ''
-        uses: actions/upload-artifact@v4
-        with:
-          name: dnsproxy-linux-amd64.gz
-          path: artifacts/*.gz
-          compression-level: 0
-
-      - name: "Upload Artifacts (2/2)"
-        id: artifacts_2
-        if: steps.prepare.outputs.version != ''
-        uses: actions/upload-artifact@v4
-        with:
-          name: dnsproxy-linux-amd64.rpm
-          path: artifacts/*.rpm
-          compression-level: 0
+          curl -u ${{ secrets.PACKIT_USERNAME }}:${{ secrets.PACKIT_API_KEY }} --fail-with-body -F "dist=1" -F "file=@${RPM_NAME}" https://pkg.ecn.io/admin/rpm/packages
