@@ -46,12 +46,12 @@ jobs:
       - name: "Perform Unit Tests"
         id: unit_tests
         run: |
-          ./proxytest --setup-pki
           go test -v ./...
       
       - name: "Perform Functional Tests"
         id: functional_tests
         run: |
+          ./proxytest --setup-pki
           nohup ./dnsproxy server -c dnsproxy_test.conf &
           sleep 1
           ./proxytest https://localhost:8443/dns-query a dns.google. | grep '{8, 8, 8, 8}'
