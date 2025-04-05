@@ -20,6 +20,7 @@ package dnsproxy
 
 import (
 	"bufio"
+	"crypto/tls"
 	"fmt"
 	"net"
 	"net/url"
@@ -57,6 +58,10 @@ func (c tServerConfig) Validate() (errors []string) {
 		errors = append(errors, fmt.Sprintf("private key file does not exist or is unreable: %s", err.Error()))
 	}
 
+	if _, err := tls.LoadX509KeyPair(c.CertPath, c.KeyPath); err != nil {
+		errors = append(errors, fmt.Sprintf("unable to load certificate or private key: %s", err.Error()))
+	}
+
 	if c.Verbosity > 3 {
 		errors = append(errors, fmt.Sprintf("invalid verbosity level %d, must be one of 0, 1, 2, or 3", c.Verbosity))
 	}
@@ -72,6 +77,12 @@ func (c tServerConfig) Validate() (errors []string) {
 		}
 		if u.Scheme != "http" && u.Scheme != "https" {
 			errors = append(errors, fmt.Sprintf("invalid http request: unsupported scheme %s", u.Scheme))
+		}
+	}
+
+	if c.ZabbixHost != nil {
+		if _, _, err := net.SplitHostPort(*c.ZabbixHost); err != nil {
+			errors = append(errors, fmt.Sprintf("invalid zabbix server address: %s", err.Error()))
 		}
 	}
 

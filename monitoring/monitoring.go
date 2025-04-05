@@ -48,7 +48,15 @@ func Setup(serverName, zabbixHost string) error {
 	}
 
 	for _, item := range items {
-		keyToItemIdMap[item.Key] = item.ItemId
+		if _, known := keyToItemIdMap[item.Key]; known {
+			keyToItemIdMap[item.Key] = item.ItemId
+		}
+	}
+
+	for key, id := range keyToItemIdMap {
+		if id == -1 {
+			fmt.Fprintf(os.Stderr, "No active item with key '%s' found for zabbix host '%s'. This metric will not be sent to the server.\n", key, zabbixHost)
+		}
 	}
 
 	session = s

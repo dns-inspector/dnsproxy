@@ -25,6 +25,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"time"
 )
 
 type httpServer struct{}
@@ -39,6 +40,7 @@ func (s *httpServer) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
+	rw.Header().Add("Date", time.Now().UTC().Format(time.RFC1123))
 	rw.Header().Add("X-Powered-By", "-")
 	rw.Header().Add("Server", "-")
 
