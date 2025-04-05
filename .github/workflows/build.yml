@@ -11,7 +11,7 @@ permissions:
   contents: read
 
 jobs:
-  build_debug:
+  build_and_test:
     name: "Build & Test"
     runs-on: ubuntu-latest
     steps:
@@ -36,12 +36,12 @@ jobs:
           cd cmd/dnsproxy
           go build -v
           cd ../../
-          mv cmd/proxytest/proxytest .
+          mv cmd/dnsproxy/dnsproxy .
           
           cd cmd/proxytest
           go build -v
           cd ../../
-          mv cmd/dnsproxy/dnsproxy .
+          mv cmd/proxytest/proxytest .
 
       - name: "Perform Unit Tests"
         id: unit_tests
@@ -60,6 +60,7 @@ jobs:
   build_release:
     name: "Release Build & Publish"
     runs-on: ubuntu-latest
+    needs: [build_and_test]
     steps:
       - name: Checkout
         id: checkout
