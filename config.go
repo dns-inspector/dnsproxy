@@ -35,16 +35,17 @@ import (
 var DefaultConfig string
 
 type tServerConfig struct {
-	CertPath      string
-	KeyPath       string
-	Verbosity     uint8
-	LogPath       string
-	DNSServerAddr string
-	HTTPSPort     uint16
-	TLSPort       uint16
-	HTTPRedirect  string
-	ServerName    string
-	ZabbixHost    *string
+	CertPath            string
+	KeyPath             string
+	Verbosity           uint8
+	LogPath             string
+	CompressRotatedLogs bool
+	DNSServerAddr       string
+	HTTPSPort           uint16
+	TLSPort             uint16
+	HTTPRedirect        string
+	ServerName          string
+	ZabbixHost          *string
 }
 
 func (c tServerConfig) Validate() (errors []string) {
@@ -131,6 +132,8 @@ func loadConfig(configPath string) (*tServerConfig, []string) {
 			config.Verbosity = verbosity
 		case "log_path":
 			config.LogPath = value
+		case "compress_rotated_logs":
+			config.CompressRotatedLogs = strings.EqualFold(value, "true") || strings.EqualFold(value, "on") || strings.EqualFold(value, "yes")
 		case "dns_server_addr":
 			config.DNSServerAddr = value
 		case "https_port":

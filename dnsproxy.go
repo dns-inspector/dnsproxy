@@ -26,7 +26,6 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"strings"
 	"sync"
 	"time"
 
@@ -182,25 +181,6 @@ func stop(restart bool) {
 	}
 }
 
-func RotateLog() {
-	if logFile == nil {
-		return
-	}
-
-	logLock.Lock()
-	defer logLock.Unlock()
-
-	logFile.Sync()
-	logFile.Close()
-	logFile = nil
-
-	os.Rename(serverConfig.LogPath, fmt.Sprintf("%s.%s", serverConfig.LogPath, time.Now().AddDate(0, 0, -1).Format("2006-01-02")))
-
-	if f, err := os.OpenFile(serverConfig.LogPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644); err == nil {
-		logFile = f
-	}
-}
-
 // Proxy the given DNS message to the server.
 // The message MUST include a 2-byte big-endian length at the start.
 func proxyDnsMessage(message []byte) ([]byte, error) {
@@ -227,40 +207,4 @@ func proxyDnsMessage(message []byte) ([]byte, error) {
 	}
 
 	return append(rawSize, replyData...), nil
-}
-
-func logf(proto, level, ip, useragent, format string, args ...any) {
-	var message string
-	if len(args) > 0 {
-		message = fmt.Sprintf(format, args...)
-	} else {
-		message = format
-	}
-
-	values := []string{
-		time.Now().UTC().Format("2006-01-02T15:04:05-0700"),
-		csvEscape(serverConfig.ServerName),
-		level,
-		proto,
-		ip,
-		csvEscape(useragent),
-		csvEscape(message),
-	}
-	line := []byte(strings.Join(values, ",") + "\n")
-	os.Stdout.Write(line)
-	if logFile != nil {
-		logLock.Lock()
-		logFile.Write(line)
-		logLock.Unlock()
-	}
-}
-
-func csvEscape(in string) string {
-	if in != "" && strings.ContainsAny(in, ",\"\n") {
-		in = strings.ReplaceAll(in, ",", "__COMMA__")
-		in = strings.ReplaceAll(in, "\"", "__QUOTE__")
-		in = strings.ReplaceAll(in, "\n", "__NEWLINE__")
-	}
-
-	return in
 }
