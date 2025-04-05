@@ -26,7 +26,7 @@ CGO_ENABLED=0 GOAMD64=v2 go build -v -buildmode=exe -trimpath -ldflags="-s -w -X
 %install
 mkdir -p %{buildroot}/etc/dnsproxy
 install -Dpm 0755 cmd/dnsproxy/dnsproxy %{buildroot}/usr/sbin/dnsproxy
-install -Dpm 644 dnsproxy.conf %{buildroot}/etc/dnsproxy/dnsproxy.conf
+install -Dpm 644 dnsproxy.conf %{buildroot}/etc/dnsproxy/dnsproxy.conf.example
 install -Dpm 644 dnsproxy.service %{buildroot}%{_unitdir}/dnsproxy.service
 
 %check
@@ -45,5 +45,5 @@ fi
 
 %files
 /usr/sbin/dnsproxy
-/etc/dnsproxy/dnsproxy.conf
+/etc/dnsproxy/dnsproxy.conf.example
 %{_unitdir}/dnsproxy.service
