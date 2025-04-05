@@ -33,23 +33,21 @@ jobs:
         run: |
           go build -v ./...
 
+          cd cmd/dnsproxy
+          go build -v
+          cd ../../
+          mv cmd/proxytest/proxytest .
+          
+          cd cmd/proxytest
+          go build -v
+          cd ../../
+          mv cmd/dnsproxy/dnsproxy .
+
       - name: "Perform Unit Tests"
         id: unit_tests
         run: |
-          go test -v ./...
-      
-      - name: "Setup Functional Tests"
-        id: setup_functional_tests
-        run: |
-          cd cmd/proxytest
-          go build
-          cd ../../
-          mv cmd/proxytest/proxytest .
           ./proxytest --setup-pki
-          cd cmd/dnsproxy
-          go build
-          cd ../../
-          mv cmd/dnsproxy/dnsproxy .
+          go test -v ./...
       
       - name: "Perform Functional Tests"
         id: functional_tests
