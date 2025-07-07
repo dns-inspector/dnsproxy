@@ -45,100 +45,114 @@ func (s *httpServer) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	rw.Header().Add("Server", "-")
 
 	useragent := r.Header.Get("User-Agent")
+	// Reject requests without a user agent
+	if useragent == "" {
+		rw.WriteHeader(400)
+		rw.Write([]byte("a user agent is required"))
+		return
+	}
+
 	if serverConfig.Verbosity >= 3 {
 		logf("https", "info", r.RemoteAddr, useragent, "connect")
 	}
 
 	defer r.Body.Close()
 
-	if r.URL.Path == "/dns-query" {
-		var message []byte
-		if r.Method == "GET" {
-			encodedMessage := r.URL.Query().Get("dns")
-			if encodedMessage == "" {
-				if serverConfig.Verbosity >= 2 {
-					logf("https", "warn", r.RemoteAddr, useragent, "missing dns query in url")
-				}
-				monitoring.RecordQueryDohError()
-				rw.WriteHeader(400)
-				rw.Write([]byte("missing dns query in url"))
-				return
-			}
-			m, err := base64.RawURLEncoding.DecodeString(encodedMessage)
-			if err != nil {
-				if serverConfig.Verbosity >= 2 {
-					logf("https", "warn", r.RemoteAddr, useragent, "invalid base64 data in dns query")
-				}
-				monitoring.RecordQueryDohError()
-				rw.WriteHeader(400)
-				rw.Write([]byte("invalid base64 value in dns query"))
-				return
-			}
-			if len(m) <= 12 {
-				if serverConfig.Verbosity >= 2 {
-					logf("https", "warn", r.RemoteAddr, useragent, "invalid base64 data in dns query")
-				}
-				monitoring.RecordQueryDohError()
-				rw.WriteHeader(400)
-				rw.Write([]byte("invalid base64 value in dns query"))
-				return
-			}
-			message = m
-		} else if r.Method == "POST" {
-			if r.ContentLength > 4096 {
-				if serverConfig.Verbosity >= 2 {
-					logf("https", "warn", r.RemoteAddr, useragent, "message too large")
-				}
-				monitoring.RecordQueryDohError()
-				rw.WriteHeader(400)
-				rw.Write([]byte("message too large"))
-				return
-			}
-			m, err := io.ReadAll(r.Body)
-			if err != nil {
-				monitoring.RecordQueryDohError()
-				rw.WriteHeader(500)
-				return
-			}
-			message = m
-		} else {
-			monitoring.RecordQueryDohError()
-			rw.WriteHeader(405)
-			return
-		}
-
-		length := make([]byte, 2)
-		binary.BigEndian.PutUint16(length, uint16(len(message)))
-
-		message = append(length, message...)
-		reply, err := proxyDnsMessage(message)
-		if err != nil {
-			if serverConfig.Verbosity >= 1 {
-				logf("https", "error", r.RemoteAddr, useragent, "error proxying dns message: %s", err.Error())
-			}
-			monitoring.RecordQueryDohError()
-			rw.WriteHeader(500)
-			rw.Write([]byte("internal server error"))
-			return
-		}
-		if serverConfig.Verbosity >= 3 {
-			logf("https", "trace", r.RemoteAddr, useragent, "message: %02x reply: %02x", message, reply)
-		}
-		logf("https", "stats", "", "", "message proxied")
-		monitoring.RecordQueryDohForward()
-		rw.Header().Set("Content-Type", "application/dns-message")
-		rw.Header().Set("Content-Length", fmt.Sprintf("%d", len(reply[2:])))
-		rw.WriteHeader(200)
-		rw.Write(reply[2:])
-		return
-	} else if r.URL.Path == "/" && serverConfig.HTTPRedirect != "" {
+	if r.URL.Path == "/" && serverConfig.HTTPRedirect != "" {
 		rw.Header().Add("Location", serverConfig.HTTPRedirect)
 		rw.WriteHeader(302)
 		return
 	}
 
-	if serverConfig.Verbosity >= 2 {
-		logf("https", "warn", r.RemoteAddr, useragent, "unknown url: %s", r.URL.String())
+	if r.URL.Path != "/dns-query" {
+		if serverConfig.Verbosity >= 2 {
+			logf("https", "warn", r.RemoteAddr, useragent, "unknown url: %s", r.URL.String())
+		}
+		rw.WriteHeader(404)
+		return
 	}
-	rw.WriteHeader(404)
+
+	if r.Method != "GET" && r.Method != "POST" {
+		rw.WriteHeader(405)
+		return
+	}
+
+	var message []byte
+	if r.Method == "GET" {
+		encodedMessage := r.URL.Query().Get("dns")
+		if encodedMessage == "" {
+			if serverConfig.Verbosity >= 2 {
+				logf("https", "warn", r.RemoteAddr, useragent, "missing dns query in url")
+			}
+			monitoring.RecordQueryDohError()
+			rw.WriteHeader(400)
+			rw.Write([]byte("missing dns query in url"))
+			return
+		}
+		m, err := base64.RawURLEncoding.DecodeString(encodedMessage)
+		if err != nil {
+			if serverConfig.Verbosity >= 2 {
+				logf("https", "warn", r.RemoteAddr, useragent, "invalid base64 data in dns query")
+			}
+			monitoring.RecordQueryDohError()
+			rw.WriteHeader(400)
+			rw.Write([]byte("invalid base64 value in dns query"))
+			return
+		}
+		if len(m) <= 12 {
+			if serverConfig.Verbosity >= 2 {
+				logf("https", "warn", r.RemoteAddr, useragent, "invalid base64 data in dns query")
+			}
+			monitoring.RecordQueryDohError()
+			rw.WriteHeader(400)
+			rw.Write([]byte("invalid base64 value in dns query"))
+			return
+		}
+		message = m
+	} else if r.Method == "POST" {
+		if r.ContentLength > 4096 {
+			if serverConfig.Verbosity >= 2 {
+				logf("https", "warn", r.RemoteAddr, useragent, "message too large")
+			}
+			monitoring.RecordQueryDohError()
+			rw.WriteHeader(400)
+			rw.Write([]byte("message too large"))
+			return
+		}
+		m, err := io.ReadAll(r.Body)
+		if err != nil {
+			monitoring.RecordQueryDohError()
+			rw.WriteHeader(500)
+			return
+		}
+		message = m
+	} else {
+		monitoring.RecordQueryDohError()
+		rw.WriteHeader(405)
+		return
+	}
+
+	length := make([]byte, 2)
+	binary.BigEndian.PutUint16(length, uint16(len(message)))
+
+	message = append(length, message...)
+	reply, err := proxyDnsMessage(message)
+	if err != nil {
+		if serverConfig.Verbosity >= 1 {
+			logf("https", "error", r.RemoteAddr, useragent, "error proxying dns message: %s", err.Error())
+		}
+		monitoring.RecordQueryDohError()
+		rw.WriteHeader(500)
+		rw.Write([]byte("internal server error"))
+		return
+	}
+	if serverConfig.Verbosity >= 3 {
+		logf("https", "trace", r.RemoteAddr, useragent, "message: %02x reply: %02x", message, reply)
+	}
+	logf("https", "stats", "", "", "message proxied")
+	monitoring.RecordQueryDohForward()
+	rw.Header().Set("Content-Type", "application/dns-message")
+	rw.Header().Set("Content-Length", fmt.Sprintf("%d", len(reply[2:])))
+	rw.WriteHeader(200)
+	rw.Write(reply[2:])
 }
