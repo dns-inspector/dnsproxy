@@ -10,4 +10,6 @@ WORKDIR /
 ADD entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
+ENV [ VERSION="", ARCH="" ]
+
 ENTRYPOINT [ "/entrypoint.sh" ]

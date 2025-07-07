@@ -58,7 +58,7 @@ jobs:
           ./proxytest localhost:8853 aaaa dns.google. | grep '{32, 1, 72, 96, 72, 96, 0, 0, 0, 0, 0, 0, 0, 0, 136, 68}'
 
   build_release:
-    name: "Release Build & Publish"
+    name: "Release Build"
     runs-on: ubuntu-latest
     needs: [build_and_test]
     steps:
@@ -92,26 +92,16 @@ jobs:
       - name: "Build"
         id: build
         if: steps.prepare.outputs.version != ''
-        run: DOCKER_CMD=docker ./release.sh $(cat dnsproxy.version)
+        run: DOCKER_CMD=docker ./release.sh
 
       - name: "Upload Artifacts"
         id: artifacts
         if: steps.prepare.outputs.version != ''
         uses: actions/upload-artifact@v4
         with:
-          name: dnsproxy-linux-amd64.gz
+          name: dnsproxy-linux.gz
           path: |
             artifacts/*.gz
             artifacts/*.rpm
             artifacts/*.deb
           compression-level: 0
-
-      - name: "Publish Packages"
-        id: upload
-        if: steps.prepare.outputs.version != ''
-        run: |
-          cd artifacts
-          export RPM_NAME="dnsproxy-$(cat ../dnsproxy.version)-1.x86_64.rpm"
-          export DEB_NAME="dnsproxy-$(cat ../dnsproxy.version).amd64.deb"
-          curl -u ${{ secrets.PACKIT_USERNAME }}:${{ secrets.PACKIT_API_KEY }} --fail-with-body -F "dist=1" -F "file=@${RPM_NAME}" https://pkg.ecn.io/admin/rpm/packages
-          curl -u ${{ secrets.PACKIT_USERNAME }}:${{ secrets.PACKIT_API_KEY }} --fail-with-body -F "dist=1" -F "file=@${DEB_NAME}" https://pkg.ecn.io/admin/deb/packages

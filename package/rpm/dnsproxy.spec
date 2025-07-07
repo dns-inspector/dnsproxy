@@ -19,18 +19,14 @@ dnsproxy is a server that proxies DNS over TLS and DNS over HTTPS requests to a 
 %autosetup
 
 %build
-cd cmd/dnsproxy
-CGO_ENABLED=0 GOAMD64=v2 go build -v -buildmode=exe -trimpath -ldflags="-s -w -X 'dnsproxy.Version=%{version}' -X 'dnsproxy.BuiltOn=%{_date}' -X 'dnsproxy.Revision=%{_revision}'"
-./dnsproxy -v
 
 %install
 mkdir -p %{buildroot}/etc/dnsproxy
-install -Dpm 0755 cmd/dnsproxy/dnsproxy %{buildroot}/usr/sbin/dnsproxy
+install -Dpm 0755 dnsproxy %{buildroot}/usr/sbin/dnsproxy
 install -Dpm 644 dnsproxy.conf %{buildroot}/etc/dnsproxy/dnsproxy.conf.example
 install -Dpm 644 dnsproxy.service %{buildroot}%{_unitdir}/dnsproxy.service
 
 %check
-CGO_ENABLED=0 GOAMD64=v2 go build -v ./...
 
 %post
 %systemd_post dnsproxy.service

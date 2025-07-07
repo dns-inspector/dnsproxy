@@ -1,6 +1,6 @@
 Package: dnsproxy
 Version: %%VERSION%%
-Architecture: amd64
+Architecture: %%ARCH%%
 Maintainer: The DNS Inspector Team <hello@dns-inspector.com>
 Description: DNS Proxy for DNS over HTTPS and DNS over TLS
 Build-Depends: dh-systemd (>= 1.5)

@@ -1,3 +1,5 @@
 #!/bin/bash
+set -e
+set -x
 
-/usr/bin/rpmbuild -ba --define "_version ${VERSION}" --define "_date ${BUILD_DATE}" --define "_revision ${BUILD_REVISION}" dnsproxy.spec
+/usr/bin/rpmbuild -ba --target=${ARCH} --define "_version ${VERSION}" dnsproxy.spec
