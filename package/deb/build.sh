@@ -11,7 +11,7 @@ rm -rf workdir
 mkdir workdir
 
 cp ../../artifacts/dnsproxy-${VERSION}-linux-${ARCH}.gz ../../dnsproxy.conf workdir
-cp dnsproxy.service postinst.sh workdir
+cp dnsproxy.service postinst.sh preinst.sh postrm.sh workdir
 cat dnsproxy.control | sed "s/%%VERSION%%/${VERSION}/g" | sed "s/%%ARCH%%/${ARCH}/g" > workdir/dnsproxy.control
 
 ${DOCKER_CMD} build -t localhost/dnsproxy_build_deb:latest .
