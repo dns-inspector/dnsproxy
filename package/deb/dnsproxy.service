@@ -5,8 +5,7 @@ After=network.target
 
 [Service]
 Type=notify
-User=dnsproxy
-Group=dnsproxy
+User=root
 ExecStart=/usr/sbin/dnsproxy server
 ExecReload=/bin/kill -USR2 "$MAINPID"
 TimeoutSec=5000
