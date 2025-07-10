@@ -1,7 +1,7 @@
 Name:           dnsproxy
 Version:        %{_version}
 Release:        1
-Summary:        DNS Proxy for DNS over HTTPS and DNS over TLS
+Summary:        DNS Proxy for DNS over HTTPS, DNS over TLS, and DNS over Quic
 License:        GPL-3.0
 Source0:        %{name}-%{version}.tar.gz
 BuildRequires:  systemd-rpm-macros
@@ -11,7 +11,7 @@ URL:            https://github.com/dns-inspector/dnsproxy
 BugURL:         https://github.com/dns-inspector/dnsproxy/issues
 
 %description
-dnsproxy is a server that proxies DNS over TLS and DNS over HTTPS requests to a standard DNS server.
+dnsproxy is a server that proxies DNS over TLS, DNS over HTTPS, and DNS over Quic requests to a standard DNS server.
 
 %global debug_package %{nil}
 
@@ -36,8 +36,14 @@ if test $(readlink /proc/*/exe | grep /etc/dnsproxy/dnsproxy | wc -l) = 1; then
     systemctl restart dnsproxy.service
 fi
 
+%pre
+getent group dnsproxy >/dev/null 2>&1 || groupadd -r -g 172 dnsproxy
+id dnsproxy >/dev/null 2>&1 || useradd -M -g dnsproxy -r -s /sbin/nologin
+
 %preun
 %systemd_preun dnsproxy.service
+userdel -f dnsproxy
+groupdel -f dnsproxy
 
 %files
 /usr/sbin/dnsproxy
