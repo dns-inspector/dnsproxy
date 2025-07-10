@@ -71,11 +71,6 @@ func Start(configPath string) (bool, error) {
 		return false, fmt.Errorf("unable to load certificate or private key: %s", err.Error())
 	}
 
-	c := &tls.Config{
-		Certificates: []tls.Certificate{cert},
-		NextProtos:   []string{"doq"},
-	}
-
 	if serverConfig.ZabbixHost != nil && monitoring.Setup(serverConfig.ServerName, *serverConfig.ZabbixHost) == nil {
 		go monitoring.StartSendLoop()
 	}
@@ -85,6 +80,9 @@ func Start(configPath string) (bool, error) {
 	go func() {
 		if serverConfig.TLSPort == 0 {
 			return
+		}
+		c := &tls.Config{
+			Certificates: []tls.Certificate{cert},
 		}
 
 		l, err := tls.Listen("tcp4", fmt.Sprintf("0.0.0.0:%d", serverConfig.TLSPort), c)
@@ -103,6 +101,9 @@ func Start(configPath string) (bool, error) {
 	go func() {
 		if serverConfig.TLSPort == 0 {
 			return
+		}
+		c := &tls.Config{
+			Certificates: []tls.Certificate{cert},
 		}
 
 		l, err := tls.Listen("tcp6", fmt.Sprintf("[::]:%d", serverConfig.TLSPort), c)
@@ -125,6 +126,10 @@ func Start(configPath string) (bool, error) {
 		}
 		if port == 0 {
 			return
+		}
+		c := &tls.Config{
+			Certificates: []tls.Certificate{cert},
+			NextProtos:   []string{"doq"},
 		}
 
 		pc, err := net.ListenPacket("udp4", fmt.Sprintf("0.0.0.0:%d", port))
@@ -156,6 +161,10 @@ func Start(configPath string) (bool, error) {
 		if port == 0 {
 			return
 		}
+		c := &tls.Config{
+			Certificates: []tls.Certificate{cert},
+			NextProtos:   []string{"doq"},
+		}
 
 		pc, err := net.ListenPacket("udp6", fmt.Sprintf("[::]:%d", port))
 		if err != nil {
@@ -182,6 +191,10 @@ func Start(configPath string) (bool, error) {
 		if serverConfig.HTTPSPort == 0 {
 			return
 		}
+		c := &tls.Config{
+			Certificates: []tls.Certificate{cert},
+			NextProtos:   []string{"h2", "http/1.1"},
+		}
 
 		l, err := tls.Listen("tcp4", fmt.Sprintf("0.0.0.0:%d", serverConfig.HTTPSPort), c)
 		if err != nil {
@@ -199,6 +212,10 @@ func Start(configPath string) (bool, error) {
 	go func() {
 		if serverConfig.HTTPSPort == 0 {
 			return
+		}
+		c := &tls.Config{
+			Certificates: []tls.Certificate{cert},
+			NextProtos:   []string{"h2", "http/1.1"},
 		}
 
 		l, err := tls.Listen("tcp6", fmt.Sprintf("[::]:%d", serverConfig.HTTPSPort), c)
