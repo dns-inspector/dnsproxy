@@ -32,7 +32,7 @@ dnsproxy is configured using a configuration file. To generate a default configu
 
 ### Monitoring
 
-dnsproxy can act as a Zabbix agent. When the `zabbix_server` configuration proerty is set, it will
+dnsproxy can act as a Zabbix agent. When the `zabbix_server` configuration property is set, it will
 send the following metrics every minute:
 
 |Item Key|Description|
