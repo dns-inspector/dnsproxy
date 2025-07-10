@@ -3,9 +3,9 @@ module dnsproxy
 go 1.24.5
 
 require (
-	github.com/quic-go/quic-go v0.53.0
 	github.com/ecnepsnai/sdnotify v1.0.0
 	github.com/ecnepsnai/zbx v1.2.0
+	github.com/quic-go/quic-go v0.53.0
 	golang.org/x/net v0.41.0
 )
 
