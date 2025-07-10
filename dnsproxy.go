@@ -30,6 +30,7 @@ import (
 	"time"
 
 	"github.com/ecnepsnai/sdnotify"
+	"github.com/quic-go/quic-go"
 )
 
 var (
@@ -39,11 +40,16 @@ var (
 )
 
 var (
-	serverConfig   *tServerConfig
-	logLock        = &sync.Mutex{}
-	logFile        *os.File
+	serverConfig *tServerConfig
+	logLock      = &sync.Mutex{}
+	logFile      *os.File
+)
+
+var (
 	listenerTLS4   net.Listener
 	listenerTLS6   net.Listener
+	listenerQuic4  *quic.EarlyListener
+	listenerQuic6  *quic.EarlyListener
 	listenerHTTPS4 net.Listener
 	listenerHTTPS6 net.Listener
 )
@@ -67,6 +73,7 @@ func Start(configPath string) (bool, error) {
 
 	c := &tls.Config{
 		Certificates: []tls.Certificate{cert},
+		NextProtos:   []string{"doq"},
 	}
 
 	if serverConfig.ZabbixHost != nil && monitoring.Setup(serverConfig.ServerName, *serverConfig.ZabbixHost) == nil {
@@ -82,6 +89,9 @@ func Start(configPath string) (bool, error) {
 			return
 		}
 		listenerTLS4 = l
+		if serverConfig.Verbosity >= 3 {
+			logf("main", "debug", "", "", "Start: TLS server started on: %s", l.Addr().String())
+		}
 
 		listenErr <- tlsServer(l)
 	}()
@@ -93,8 +103,65 @@ func Start(configPath string) (bool, error) {
 			return
 		}
 		listenerTLS4 = l
+		if serverConfig.Verbosity >= 3 {
+			logf("main", "debug", "", "", "Start: TLS server started on: %s", l.Addr().String())
+		}
 
 		listenErr <- tlsServer(l)
+	}()
+
+	go func() {
+		port := serverConfig.QuicPort
+		if port == 0 {
+			port = serverConfig.TLSPort
+		}
+
+		pc, err := net.ListenPacket("udp4", fmt.Sprintf("0.0.0.0:%d", port))
+		if err != nil {
+			listenErr <- fmt.Errorf("unable to start IPv4 Quic server: %s", err.Error())
+			return
+		}
+		qc := &quic.Transport{
+			Conn: pc,
+		}
+		l, err := qc.ListenEarly(c, nil)
+		if err != nil {
+			listenErr <- fmt.Errorf("unable to start IPv4 Quic server: %s", err.Error())
+			return
+		}
+		if serverConfig.Verbosity >= 3 {
+			logf("main", "debug", "", "", "Start: Quic server started on: %s", l.Addr().String())
+		}
+
+		listenerQuic4 = l
+		listenErr <- quicServer(l)
+	}()
+
+	go func() {
+		port := serverConfig.QuicPort
+		if port == 0 {
+			port = serverConfig.TLSPort
+		}
+
+		pc, err := net.ListenPacket("udp6", fmt.Sprintf("[::]:%d", port))
+		if err != nil {
+			listenErr <- fmt.Errorf("unable to start IPv6 Quic server: %s", err.Error())
+			return
+		}
+		qc := &quic.Transport{
+			Conn: pc,
+		}
+		l, err := qc.ListenEarly(c, nil)
+		if err != nil {
+			listenErr <- fmt.Errorf("unable to start IPv6 Quic server: %s", err.Error())
+			return
+		}
+		if serverConfig.Verbosity >= 3 {
+			logf("main", "debug", "", "", "Start: Quic server started on: %s", l.Addr().String())
+		}
+
+		listenerQuic6 = l
+		listenErr <- quicServer(l)
 	}()
 
 	go func() {
@@ -104,6 +171,9 @@ func Start(configPath string) (bool, error) {
 			return
 		}
 		listenerHTTPS4 = l
+		if serverConfig.Verbosity >= 3 {
+			logf("main", "debug", "", "", "Start: HTTPS server started on: %s", l.Addr().String())
+		}
 
 		listenErr <- http.Serve(l, &httpServer{})
 	}()
@@ -115,6 +185,9 @@ func Start(configPath string) (bool, error) {
 			return
 		}
 		listenerHTTPS4 = l
+		if serverConfig.Verbosity >= 3 {
+			logf("main", "debug", "", "", "Start: HTTPS server started on: %s", l.Addr().String())
+		}
 
 		listenErr <- http.Serve(l, &httpServer{})
 	}()
@@ -170,6 +243,14 @@ func stop(restart bool) {
 	if listenerTLS6 != nil {
 		listenerTLS6.Close()
 		listenerTLS6 = nil
+	}
+	if listenerQuic4 != nil {
+		listenerQuic4.Close()
+		listenerQuic4 = nil
+	}
+	if listenerQuic6 != nil {
+		listenerQuic6.Close()
+		listenerQuic6 = nil
 	}
 	if listenerHTTPS4 != nil {
 		listenerHTTPS4.Close()

@@ -43,6 +43,7 @@ type tServerConfig struct {
 	DNSServerAddr       string
 	HTTPSPort           uint16
 	TLSPort             uint16
+	QuicPort            uint16
 	HTTPRedirect        string
 	ServerName          string
 	ZabbixHost          *string
@@ -148,6 +149,12 @@ func loadConfig(configPath string) (*tServerConfig, []string) {
 				errors = append(errors, fmt.Sprintf("invalid tls_port value: %s", value))
 			}
 			config.TLSPort = tlsport
+		case "quic_port":
+			quicport, err := parseUint16(value)
+			if err != nil {
+				errors = append(errors, fmt.Sprintf("invalid quic_port value: %s", value))
+			}
+			config.QuicPort = quicport
 		case "http_redirect":
 			config.HTTPRedirect = value
 		case "server_name":

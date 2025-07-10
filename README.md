@@ -1,11 +1,13 @@
 # dnsproxy
 
-dnsproxy is a server that proxies DNS over TLS and DNS over HTTPS requests to a standard DNS server.
+dnsproxy is a server that proxies DNS over TLS, DNS over HTTPS, and DNS over Quic requests to a
+standard DNS server.
 
 ## Usage
 
-dnsproxy is intended to directly face the internet, and should be run as root to allow it to bind to
-the appropriate ports (443, 853). dnsproxy requires a TLS certificate and private key.
+dnsproxy is intended to directly face the internet and should be able to bind to the correct ports
+(443, 853). dnsproxy requires a TLS certificate and private key. DNS over TLS and DNS over Quic
+requires a TLS certificate with an IP Address subject alternate name.
 
 ```
 Usage dnsproxy <mode> [options]
@@ -26,7 +28,7 @@ USR2       Reload the configuration without restarting the process
 ### Configuration
 
 dnsproxy is configured using a configuration file. To generate a default configuration file, run
-`dnsproxy config`
+`dnsproxy config`.
 
 ### Monitoring
 
