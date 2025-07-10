@@ -72,6 +72,10 @@ func (c tServerConfig) Validate() (errors []string) {
 		errors = append(errors, fmt.Sprintf("invalid dns server address: %s", err.Error()))
 	}
 
+	if c.HTTPSPort+c.TLSPort+c.QuicPort == 0 {
+		errors = append(errors, "at least one of https_port, tls_port, or quic_port must be greater than 0")
+	}
+
 	if c.HTTPRedirect != "" {
 		u, err := url.Parse(c.HTTPRedirect)
 		if err != nil {

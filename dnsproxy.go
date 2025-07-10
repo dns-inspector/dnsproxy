@@ -83,6 +83,10 @@ func Start(configPath string) (bool, error) {
 	listenErr := make(chan error, 1)
 
 	go func() {
+		if serverConfig.TLSPort == 0 {
+			return
+		}
+
 		l, err := tls.Listen("tcp4", fmt.Sprintf("0.0.0.0:%d", serverConfig.TLSPort), c)
 		if err != nil {
 			listenErr <- fmt.Errorf("unable to start IPv4 TLS server: %s", err.Error())
@@ -97,6 +101,10 @@ func Start(configPath string) (bool, error) {
 	}()
 
 	go func() {
+		if serverConfig.TLSPort == 0 {
+			return
+		}
+
 		l, err := tls.Listen("tcp6", fmt.Sprintf("[::]:%d", serverConfig.TLSPort), c)
 		if err != nil {
 			listenErr <- fmt.Errorf("unable to start IPv6 TLS server: %s", err.Error())
@@ -114,6 +122,9 @@ func Start(configPath string) (bool, error) {
 		port := serverConfig.QuicPort
 		if port == 0 {
 			port = serverConfig.TLSPort
+		}
+		if port == 0 {
+			return
 		}
 
 		pc, err := net.ListenPacket("udp4", fmt.Sprintf("0.0.0.0:%d", port))
@@ -142,6 +153,9 @@ func Start(configPath string) (bool, error) {
 		if port == 0 {
 			port = serverConfig.TLSPort
 		}
+		if port == 0 {
+			return
+		}
 
 		pc, err := net.ListenPacket("udp6", fmt.Sprintf("[::]:%d", port))
 		if err != nil {
@@ -165,6 +179,10 @@ func Start(configPath string) (bool, error) {
 	}()
 
 	go func() {
+		if serverConfig.HTTPSPort == 0 {
+			return
+		}
+
 		l, err := tls.Listen("tcp4", fmt.Sprintf("0.0.0.0:%d", serverConfig.HTTPSPort), c)
 		if err != nil {
 			listenErr <- fmt.Errorf("unable to start IPv4 HTTPS server: %s", err.Error())
@@ -179,6 +197,10 @@ func Start(configPath string) (bool, error) {
 	}()
 
 	go func() {
+		if serverConfig.HTTPSPort == 0 {
+			return
+		}
+
 		l, err := tls.Listen("tcp6", fmt.Sprintf("[::]:%d", serverConfig.HTTPSPort), c)
 		if err != nil {
 			listenErr <- fmt.Errorf("unable to start IPv6 HTTPS server: %s", err.Error())
