@@ -5,13 +5,15 @@ After=network.target
 
 [Service]
 Type=notify
-User=root
+User=dnsproxy
+Group=dnsproxy
 ExecStart=/usr/sbin/dnsproxy server
 ExecReload=/bin/kill -USR2 "$MAINPID"
 TimeoutSec=5000
 Restart=on-failure
 NotifyAccess=main
 WatchdogSec=5
+AmbientCapabilities=CAP_NET_BIND_SERVICE
 
 [Install]
 WantedBy=multi-user.target
