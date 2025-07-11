@@ -32,8 +32,10 @@ var keyToItemIdMap = map[string]int{
 	"panic.recover":     -1,
 	"query.doh.forward": -1,
 	"query.dot.forward": -1,
+	"query.doq.forward": -1,
 	"query.doh.error":   -1,
 	"query.dot.error":   -1,
+	"query.doq.error":   -1,
 }
 
 var valMap = map[int]uint{}
@@ -122,10 +124,18 @@ func RecordQueryDotForward() {
 	incrementValue("query.dot.forward")
 }
 
+func RecordQueryDoqForward() {
+	incrementValue("query.doq.forward")
+}
+
 func RecordQueryDohError() {
 	incrementValue("query.doh.error")
 }
 
 func RecordQueryDotError() {
 	incrementValue("query.dot.error")
+}
+
+func RecordQueryDoqError() {
+	incrementValue("query.doq.error")
 }

@@ -73,7 +73,7 @@ func handleQuicConn(conn *quic.Conn, rw *quic.Stream) {
 		if serverConfig.Verbosity >= 2 {
 			logf("quic", "warn", conn.RemoteAddr().String(), "", "error reading message length: %s", err.Error())
 		}
-		monitoring.RecordQueryDotError()
+		monitoring.RecordQueryDoqError()
 		return
 	}
 	size := binary.BigEndian.Uint16(rawSize)
@@ -82,7 +82,7 @@ func handleQuicConn(conn *quic.Conn, rw *quic.Stream) {
 			logf("quic", "warn", conn.RemoteAddr().String(), "", "request too large: %d", size)
 		}
 		rw.Write([]byte("request too large"))
-		monitoring.RecordQueryDotError()
+		monitoring.RecordQueryDoqError()
 		return
 	}
 
@@ -92,7 +92,7 @@ func handleQuicConn(conn *quic.Conn, rw *quic.Stream) {
 		if serverConfig.Verbosity >= 2 {
 			logf("quic", "warn", conn.RemoteAddr().String(), "", "error reading message: %s", err.Error())
 		}
-		monitoring.RecordQueryDotError()
+		monitoring.RecordQueryDoqError()
 		return
 	}
 	if read != int(size) {
@@ -100,7 +100,7 @@ func handleQuicConn(conn *quic.Conn, rw *quic.Stream) {
 			logf("quic", "warn", conn.RemoteAddr().String(), "", "invalid message size")
 		}
 		rw.Write([]byte("invalid message size"))
-		monitoring.RecordQueryDotError()
+		monitoring.RecordQueryDoqError()
 		return
 	}
 
@@ -111,7 +111,7 @@ func handleQuicConn(conn *quic.Conn, rw *quic.Stream) {
 		if serverConfig.Verbosity >= 1 {
 			logf("quic", "error", conn.RemoteAddr().String(), "", "error proxying message: %s", err.Error())
 		}
-		monitoring.RecordQueryDotError()
+		monitoring.RecordQueryDoqError()
 		return
 	}
 
@@ -120,6 +120,6 @@ func handleQuicConn(conn *quic.Conn, rw *quic.Stream) {
 	}
 
 	logf("quic", "stats", "", "", "message proxied")
-	monitoring.RecordQueryDotForward()
+	monitoring.RecordQueryDoqForward()
 	rw.Write(reply)
 }

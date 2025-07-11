@@ -41,8 +41,10 @@ send the following metrics every minute:
 |`panic.recover`|The number of panics that have been recovered from within the last minute.|
 |`query.doh.forward`|The number of DNS over HTTPS queries that have been forwarded.|
 |`query.dot.forward`|The number of DNS over TLS queries that have been forwarded.|
+|`query.doq.forward`|The number of DNS over Quic queries that have been forwarded.|
 |`query.doh.error`|The number of DNS over HTTPS queries that failed.|
 |`query.dot.error`|The number of DNS over TLS queries that failed.|
+|`query.doq.error`|The number of DNS over Quic queries that failed.|
 
 ## License
 
