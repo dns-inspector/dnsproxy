@@ -42,10 +42,12 @@ type tServerConfig struct {
 	CompressRotatedLogs bool
 	DNSServerAddr       string
 	HTTPSPort           uint16
+	HTTPPort            uint16
 	TLSPort             uint16
 	QuicPort            uint16
 	HTTPRedirect        string
 	ServerName          string
+	WellKnownPath       *string
 	ZabbixHost          *string
 }
 
@@ -147,6 +149,12 @@ func loadConfig(configPath string) (*tServerConfig, []string) {
 				errors = append(errors, fmt.Sprintf("invalid https_port value: %s", value))
 			}
 			config.HTTPSPort = httpsport
+		case "http_port":
+			httpport, err := parseUint16(value)
+			if err != nil {
+				errors = append(errors, fmt.Sprintf("invalid http_port value: %s", value))
+			}
+			config.HTTPPort = httpport
 		case "tls_port":
 			tlsport, err := parseUint16(value)
 			if err != nil {
@@ -163,6 +171,8 @@ func loadConfig(configPath string) (*tServerConfig, []string) {
 			config.HTTPRedirect = value
 		case "server_name":
 			config.ServerName = value
+		case "well_known_path":
+			config.WellKnownPath = &value
 		case "zabbix_server":
 			config.ZabbixHost = &value
 		default:

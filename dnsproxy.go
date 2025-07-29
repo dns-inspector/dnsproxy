@@ -51,6 +51,8 @@ var (
 	listenerQuic6  *quic.EarlyListener
 	listenerHTTPS4 net.Listener
 	listenerHTTPS6 net.Listener
+	listenerHTTP4  net.Listener
+	listenerHTTP6  net.Listener
 )
 
 var (
@@ -79,6 +81,7 @@ func Start(configPath string) (bool, error) {
 	startTlsServer(listenErr, cert)
 	startQuicServer(listenErr, cert)
 	startHttpsServer(listenErr, cert)
+	startHttpServer(listenErr)
 
 	if serverConfig.Verbosity >= 2 {
 		logf("main", "info", "", "", "Server started")
@@ -147,6 +150,14 @@ func stop(restart bool) {
 	if listenerHTTPS6 != nil {
 		listenerHTTPS6.Close()
 		listenerHTTPS6 = nil
+	}
+	if listenerHTTP4 != nil {
+		listenerHTTP4.Close()
+		listenerHTTP4 = nil
+	}
+	if listenerHTTP6 != nil {
+		listenerHTTP6.Close()
+		listenerHTTP6 = nil
 	}
 }
 
