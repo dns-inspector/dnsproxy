@@ -20,9 +20,12 @@ package dnsproxy
 
 import (
 	"context"
+	"crypto/tls"
 	"dnsproxy/monitoring"
 	"encoding/binary"
+	"fmt"
 	"io"
+	"net"
 
 	"github.com/quic-go/quic-go"
 )
@@ -49,6 +52,76 @@ func quicServer(l *quic.EarlyListener) error {
 		}
 		go handleQuicConn(conn, stream)
 	}
+}
+
+func startQuicServer(listenErr chan error, cert tls.Certificate) {
+	go func() {
+		port := serverConfig.QuicPort
+		if port == 0 {
+			port = serverConfig.TLSPort
+		}
+		if port == 0 {
+			return
+		}
+		c := &tls.Config{
+			Certificates: []tls.Certificate{cert},
+			NextProtos:   []string{"doq"},
+		}
+
+		pc, err := net.ListenPacket("udp4", fmt.Sprintf("0.0.0.0:%d", port))
+		if err != nil {
+			listenErr <- fmt.Errorf("unable to start IPv4 Quic server: %s", err.Error())
+			return
+		}
+		qc := &quic.Transport{
+			Conn: pc,
+		}
+		l, err := qc.ListenEarly(c, nil)
+		if err != nil {
+			listenErr <- fmt.Errorf("unable to start IPv4 Quic server: %s", err.Error())
+			return
+		}
+		if serverConfig.Verbosity >= 3 {
+			logf("main", "debug", "", "", "Start: Quic server started on: %s", l.Addr().String())
+		}
+
+		listenerQuic4 = l
+		listenErr <- quicServer(l)
+	}()
+
+	go func() {
+		port := serverConfig.QuicPort
+		if port == 0 {
+			port = serverConfig.TLSPort
+		}
+		if port == 0 {
+			return
+		}
+		c := &tls.Config{
+			Certificates: []tls.Certificate{cert},
+			NextProtos:   []string{"doq"},
+		}
+
+		pc, err := net.ListenPacket("udp6", fmt.Sprintf("[::]:%d", port))
+		if err != nil {
+			listenErr <- fmt.Errorf("unable to start IPv6 Quic server: %s", err.Error())
+			return
+		}
+		qc := &quic.Transport{
+			Conn: pc,
+		}
+		l, err := qc.ListenEarly(c, nil)
+		if err != nil {
+			listenErr <- fmt.Errorf("unable to start IPv6 Quic server: %s", err.Error())
+			return
+		}
+		if serverConfig.Verbosity >= 3 {
+			logf("main", "debug", "", "", "Start: Quic server started on: %s", l.Addr().String())
+		}
+
+		listenerQuic6 = l
+		listenErr <- quicServer(l)
+	}()
 }
 
 func handleQuicConn(conn *quic.Conn, rw *quic.Stream) {

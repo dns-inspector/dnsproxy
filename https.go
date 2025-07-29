@@ -19,6 +19,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 package dnsproxy
 
 import (
+	"crypto/tls"
 	"dnsproxy/monitoring"
 	"encoding/base64"
 	"encoding/binary"
@@ -28,9 +29,55 @@ import (
 	"time"
 )
 
-type httpServer struct{}
+func startHttpsServer(listenErr chan error, cert tls.Certificate) {
+	go func() {
+		if serverConfig.HTTPSPort == 0 {
+			return
+		}
+		c := &tls.Config{
+			Certificates: []tls.Certificate{cert},
+			NextProtos:   []string{"h2", "http/1.1"},
+		}
 
-func (s *httpServer) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
+		l, err := tls.Listen("tcp4", fmt.Sprintf("0.0.0.0:%d", serverConfig.HTTPSPort), c)
+		if err != nil {
+			listenErr <- fmt.Errorf("unable to start IPv4 HTTPS server: %s", err.Error())
+			return
+		}
+		listenerHTTPS4 = l
+		if serverConfig.Verbosity >= 3 {
+			logf("main", "debug", "", "", "Start: HTTPS server started on: %s", l.Addr().String())
+		}
+
+		listenErr <- http.Serve(l, &httpsServer{})
+	}()
+
+	go func() {
+		if serverConfig.HTTPSPort == 0 {
+			return
+		}
+		c := &tls.Config{
+			Certificates: []tls.Certificate{cert},
+			NextProtos:   []string{"h2", "http/1.1"},
+		}
+
+		l, err := tls.Listen("tcp6", fmt.Sprintf("[::]:%d", serverConfig.HTTPSPort), c)
+		if err != nil {
+			listenErr <- fmt.Errorf("unable to start IPv6 HTTPS server: %s", err.Error())
+			return
+		}
+		listenerHTTPS4 = l
+		if serverConfig.Verbosity >= 3 {
+			logf("main", "debug", "", "", "Start: HTTPS server started on: %s", l.Addr().String())
+		}
+
+		listenErr <- http.Serve(l, &httpsServer{})
+	}()
+}
+
+type httpsServer struct{}
+
+func (s *httpsServer) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	defer func() {
 		if r := recover(); r != nil {
 			monitoring.RecordPanicRecover()

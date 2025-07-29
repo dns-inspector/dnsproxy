@@ -19,8 +19,10 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 package dnsproxy
 
 import (
+	"crypto/tls"
 	"dnsproxy/monitoring"
 	"encoding/binary"
+	"fmt"
 	"net"
 )
 
@@ -32,6 +34,50 @@ func tlsServer(l net.Listener) error {
 		}
 		go handleTlsConn(conn)
 	}
+}
+
+func startTlsServer(listenErr chan error, cert tls.Certificate) {
+	go func() {
+		if serverConfig.TLSPort == 0 {
+			return
+		}
+		c := &tls.Config{
+			Certificates: []tls.Certificate{cert},
+		}
+
+		l, err := tls.Listen("tcp4", fmt.Sprintf("0.0.0.0:%d", serverConfig.TLSPort), c)
+		if err != nil {
+			listenErr <- fmt.Errorf("unable to start IPv4 TLS server: %s", err.Error())
+			return
+		}
+		listenerTLS4 = l
+		if serverConfig.Verbosity >= 3 {
+			logf("main", "debug", "", "", "Start: TLS server started on: %s", l.Addr().String())
+		}
+
+		listenErr <- tlsServer(l)
+	}()
+
+	go func() {
+		if serverConfig.TLSPort == 0 {
+			return
+		}
+		c := &tls.Config{
+			Certificates: []tls.Certificate{cert},
+		}
+
+		l, err := tls.Listen("tcp6", fmt.Sprintf("[::]:%d", serverConfig.TLSPort), c)
+		if err != nil {
+			listenErr <- fmt.Errorf("unable to start IPv6 TLS server: %s", err.Error())
+			return
+		}
+		listenerTLS4 = l
+		if serverConfig.Verbosity >= 3 {
+			logf("main", "debug", "", "", "Start: TLS server started on: %s", l.Addr().String())
+		}
+
+		listenErr <- tlsServer(l)
+	}()
 }
 
 func handleTlsConn(conn net.Conn) {
