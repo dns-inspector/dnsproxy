@@ -6,8 +6,10 @@ After=network.target
 
 [Service]
 Type=notify
-User=dnsproxy
-Group=dnsproxy
+DynamicUser=true
+ConfigurationDirectory=/etc/dnsproxy
+LogsDirectory=/var/log/dnsproxy
+ProtectSystem=strict
 ExecStart=/usr/sbin/dnsproxy server
 ExecReload=/bin/kill -USR2 "$MAINPID"
 TimeoutSec=5000

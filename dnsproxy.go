@@ -63,8 +63,11 @@ var (
 func Start(configPath string) (bool, error) {
 	serverConfig = mustLoadConfig(configPath)
 
-	if f, err := os.OpenFile(serverConfig.LogPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644); err == nil {
+	f, err := os.OpenFile(serverConfig.LogPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err == nil {
 		logFile = f
+	} else {
+		fmt.Fprintf(os.Stderr, "Unable to open log file: %s", err.Error())
 	}
 
 	cert, err := tls.LoadX509KeyPair(serverConfig.CertPath, serverConfig.KeyPath)
