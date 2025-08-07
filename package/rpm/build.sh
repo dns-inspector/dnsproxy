@@ -19,7 +19,7 @@ cp ../../artifacts/dnsproxy-${VERSION}-linux-${ARCH}.gz dnsproxy-${VERSION}/
 cd dnsproxy-${VERSION}/
 gzip -d dnsproxy-${VERSION}-linux-${ARCH}.gz
 mv dnsproxy-${VERSION}-linux-${ARCH} dnsproxy
-cp ../dnsproxy.service ../../../dnsproxy.conf .
+cp ../dnsproxy.service ../../../dnsproxy.conf ../../../10-udpbuf.conf .
 cd ../
 tar -czf dnsproxy-${VERSION}.tar.gz dnsproxy-${VERSION}
 rm -rf dnsproxy-${VERSION}
