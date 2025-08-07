@@ -63,6 +63,8 @@ func main() {
 		messageType = dnsmessage.TypeAAAA
 	case "mx":
 		messageType = dnsmessage.TypeMX
+	case "txt":
+		messageType = dnsmessage.TypeTXT
 	default:
 		os.Exit(1)
 	}
@@ -100,7 +102,7 @@ func main() {
 func dot(server string, message []byte) {
 	tlsConfig := &tls.Config{InsecureSkipVerify: true}
 
-	c, err := tls.Dial("tcp", server, tlsConfig)
+	c, err := tls.Dial("tcp4", server, tlsConfig)
 	if err != nil {
 		panic(err)
 	}

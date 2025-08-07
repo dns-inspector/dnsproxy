@@ -135,13 +135,17 @@ func handleTlsConn(conn net.Conn) {
 
 	message = append(rawSize, message...)
 
-	reply, err := proxyDnsMessage(message)
-	if err != nil {
-		if serverConfig.Verbosity >= 1 {
-			logf("tls", "error", conn.RemoteAddr().String(), "", "error proxying message: %s", err.Error())
+	reply := processControlQuery(conn.RemoteAddr().String(), message)
+	if reply == nil {
+		var err error
+		reply, err = proxyDnsMessage(message)
+		if err != nil {
+			if serverConfig.Verbosity >= 1 {
+				logf("tls", "error", conn.RemoteAddr().String(), "", "error proxying message: %s", err.Error())
+			}
+			monitoring.RecordQueryDotError()
+			return
 		}
-		monitoring.RecordQueryDotError()
-		return
 	}
 
 	if serverConfig.Verbosity >= 3 {

@@ -179,13 +179,17 @@ func handleQuicConn(conn *quic.Conn, rw *quic.Stream) {
 
 	message = append(rawSize, message...)
 
-	reply, err := proxyDnsMessage(message)
-	if err != nil {
-		if serverConfig.Verbosity >= 1 {
-			logf("quic", "error", conn.RemoteAddr().String(), "", "error proxying message: %s", err.Error())
+	reply := processControlQuery(conn.RemoteAddr().String(), message)
+	if reply == nil {
+		var err error
+		reply, err = proxyDnsMessage(message)
+		if err != nil {
+			if serverConfig.Verbosity >= 1 {
+				logf("quic", "error", conn.RemoteAddr().String(), "", "error proxying message: %s", err.Error())
+			}
+			monitoring.RecordQueryDoqError()
+			return
 		}
-		monitoring.RecordQueryDoqError()
-		return
 	}
 
 	if serverConfig.Verbosity >= 3 {

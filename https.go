@@ -183,16 +183,22 @@ func (s *httpsServer) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	binary.BigEndian.PutUint16(length, uint16(len(message)))
 
 	message = append(length, message...)
-	reply, err := proxyDnsMessage(message)
-	if err != nil {
-		if serverConfig.Verbosity >= 1 {
-			logf("https", "error", r.RemoteAddr, useragent, "error proxying dns message: %s", err.Error())
+
+	reply := processControlQuery(r.RemoteAddr, message)
+	if reply == nil {
+		var err error
+		reply, err = proxyDnsMessage(message)
+		if err != nil {
+			if serverConfig.Verbosity >= 1 {
+				logf("https", "error", r.RemoteAddr, useragent, "error proxying dns message: %s", err.Error())
+			}
+			monitoring.RecordQueryDohError()
+			rw.WriteHeader(500)
+			rw.Write([]byte("internal server error"))
+			return
 		}
-		monitoring.RecordQueryDohError()
-		rw.WriteHeader(500)
-		rw.Write([]byte("internal server error"))
-		return
 	}
+
 	if serverConfig.Verbosity >= 3 {
 		logf("https", "trace", r.RemoteAddr, useragent, "message: %02x reply: %02x", message, reply)
 	}
@@ -201,5 +207,5 @@ func (s *httpsServer) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	rw.Header().Set("Content-Type", "application/dns-message")
 	rw.Header().Set("Content-Length", fmt.Sprintf("%d", len(reply[2:])))
 	rw.WriteHeader(200)
-	rw.Write(reply[2:])
+	rw.Write(reply[2:]) // proxyDnsMessage includes the length, skip that in DoH
 }

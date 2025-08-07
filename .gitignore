@@ -11,3 +11,5 @@ package/deb/workdir
 *.crt
 *.key
 /dnsproxy
+/proxytest
+nohup.out

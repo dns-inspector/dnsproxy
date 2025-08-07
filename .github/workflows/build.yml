@@ -56,6 +56,8 @@ jobs:
           sleep 1
           ./proxytest https://localhost:8443/dns-query a dns.google. | grep '{8, 8, 8, 8}'
           ./proxytest localhost:8853 aaaa dns.google. | grep '{32, 1, 72, 96, 72, 96, 0, 0, 0, 0, 0, 0, 0, 0, 136, 68}'
+          ./proxytest https://localhost:8443/dns-query txt time.dnsproxy.control. | grep "$(date --utc +%Y-%m-%d)"
+          ./proxytest localhost:8853 txt ip.dnsproxy.control. | grep '127.0.0.1'
 
   build_release:
     name: "Release Build"

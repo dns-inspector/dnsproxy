@@ -30,6 +30,19 @@ USR2       Reload the configuration without restarting the process
 dnsproxy is configured using a configuration file. To generate a default configuration file, run
 `dnsproxy config`.
 
+### Control Hosts
+
+dnsproxy offers a small number of "control" hosts which do not proxy to the DNS server but instead
+return specific data. The zone of these records is specified by the `control_zone` property in the
+dnsproxy configuration file.
+
+|RR Type|Name|Reply Description|
+|-|-|-|
+|TXT|`ip.<control_zone>`|Returns your connecting IP address as seen by the dnsproxy server.|
+|TXT|`uuid.<control_zone>`|Returns a random v4 UUID.|
+|TXT|`time.<control_zone>`|Returns the current UTC time in RFC3339 format.|
+|TXT|`version.<control_zone>`|Returns the current version of dnsproxy.|
+
 ### Monitoring
 
 dnsproxy can act as a Zabbix agent. When the `zabbix_server` configuration property is set, it will

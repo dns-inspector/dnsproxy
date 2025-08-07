@@ -47,6 +47,7 @@ type tServerConfig struct {
 	QuicPort            uint16
 	HTTPRedirect        string
 	ServerName          string
+	ControlZone         *string
 	WellKnownPath       *string
 	ZabbixHost          *string
 }
@@ -85,6 +86,15 @@ func (c tServerConfig) Validate() (errors []string) {
 		}
 		if u.Scheme != "http" && u.Scheme != "https" {
 			errors = append(errors, fmt.Sprintf("invalid http request: unsupported scheme %s", u.Scheme))
+		}
+	}
+
+	if c.ControlZone != nil {
+		if !strings.HasSuffix(*c.ControlZone, ".") {
+			errors = append(errors, "control_zone must end with a period")
+		}
+		if strings.HasPrefix(*c.ControlZone, ".") {
+			errors = append(errors, "control_zone must not start with a period")
 		}
 	}
 
@@ -171,6 +181,12 @@ func loadConfig(configPath string) (*tServerConfig, []string) {
 			config.HTTPRedirect = value
 		case "server_name":
 			config.ServerName = value
+		case "control_zone":
+			config.ControlZone = &value
+			controlZoneIp = "ip." + value
+			controlZoneTime = "time." + value
+			controlZoneUuid = "uuid." + value
+			controlZoneVersion = "version." + value
 		case "well_known_path":
 			config.WellKnownPath = &value
 		case "zabbix_server":
