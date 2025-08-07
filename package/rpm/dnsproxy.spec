@@ -42,8 +42,10 @@ id dnsproxy >/dev/null 2>&1 || useradd -M -g dnsproxy -r -s /sbin/nologin dnspro
 
 %preun
 %systemd_preun dnsproxy.service
-userdel -f dnsproxy >/dev/null 2>&1 || true
-groupdel -f dnsproxy >/dev/null 2>&1 || true
+if [ $1 -eq 0 ]; then
+    userdel -f dnsproxy >/dev/null 2>&1 || true
+    groupdel -f dnsproxy >/dev/null 2>&1 || true
+fi
 
 %files
 /usr/sbin/dnsproxy

@@ -1,5 +1,6 @@
 [Unit]
 Description=DNS Proxy
+Documentation=https://github.com/dns-inspector/dnsproxy
 After=syslog.target
 After=network.target
 
