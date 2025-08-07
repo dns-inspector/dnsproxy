@@ -30,8 +30,6 @@ install -Dpm 644 dnsproxy.service %{buildroot}%{_unitdir}/dnsproxy.service
 
 %post
 %systemd_post dnsproxy.service
-getent group dnsproxy >/dev/null 2>&1 || groupadd -r -g 172 dnsproxy
-id dnsproxy >/dev/null 2>&1 || useradd -M -g dnsproxy -r -s /sbin/nologin dnsproxy
 
 %posttrans
 if test $(readlink /proc/*/exe | grep /etc/dnsproxy/dnsproxy | wc -l) = 1; then
@@ -40,10 +38,6 @@ fi
 
 %preun
 %systemd_preun dnsproxy.service
-if [ $1 -eq 0 ]; then
-    userdel -f dnsproxy >/dev/null 2>&1 || true
-    groupdel -f dnsproxy >/dev/null 2>&1 || true
-fi
 
 %files
 /usr/sbin/dnsproxy
