@@ -25,6 +25,7 @@ import (
 	"net"
 	"net/url"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -37,7 +38,7 @@ var DefaultConfig string
 type tServerConfig struct {
 	CertPath            string
 	KeyPath             string
-	Verbosity           uint8
+	LogLevel            string
 	LogPath             string
 	RequestsLogPath     *string
 	CompressRotatedLogs bool
@@ -68,8 +69,8 @@ func (c tServerConfig) Validate() (errors []string) {
 		errors = append(errors, fmt.Sprintf("unable to load certificate or private key: %s", err.Error()))
 	}
 
-	if c.Verbosity > 3 {
-		errors = append(errors, fmt.Sprintf("invalid verbosity level %d, must be one of 0, 1, 2, or 3", c.Verbosity))
+	if !slices.Contains([]string{"debug", "info", "warn", "error"}, c.LogLevel) {
+		errors = append(errors, fmt.Sprintf("invalid log level %s", c.LogLevel))
 	}
 
 	if c.RequestsLogPath != nil && *c.RequestsLogPath == "" {
@@ -146,12 +147,8 @@ func loadConfig(configPath string) (*tServerConfig, []string) {
 			config.CertPath = value
 		case "key_path":
 			config.KeyPath = value
-		case "verbosity":
-			verbosity, err := parseUint8(value)
-			if err != nil {
-				errors = append(errors, fmt.Sprintf("invalid verbosity value: %s", value))
-			}
-			config.Verbosity = verbosity
+		case "log_level":
+			config.LogLevel = value
 		case "log_path":
 			config.LogPath = value
 		case "requests_log_path":

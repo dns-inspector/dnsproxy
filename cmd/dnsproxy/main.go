@@ -118,7 +118,7 @@ func main() {
 	go func() {
 		for {
 			<-rotate
-			dnsproxy.RotateLog()
+			dnsproxy.RotateLogs()
 		}
 	}()
 

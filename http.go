@@ -42,9 +42,7 @@ func startHttpServer(listenErr chan error) {
 			return
 		}
 		listenerHTTP4 = l
-		if serverConfig.Verbosity >= 3 {
-			logf("main", "debug", "", "", "Start: HTTP server started on: %s", l.Addr().String())
-		}
+		log.Debug("Start: HTTP server started on: %s", l.Addr().String())
 
 		listenErr <- http.Serve(l, &httpServer{})
 	}()
@@ -60,9 +58,7 @@ func startHttpServer(listenErr chan error) {
 			return
 		}
 		listenerHTTP4 = l
-		if serverConfig.Verbosity >= 3 {
-			logf("main", "debug", "", "", "Start: HTTP server started on: %s", l.Addr().String())
-		}
+		log.Debug("Start: HTTP server started on: %s", l.Addr().String())
 
 		listenErr <- http.Serve(l, &httpServer{})
 	}()
@@ -92,9 +88,12 @@ func (s *httpServer) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	urlPath := sanitizePath(r.URL.Path)
 
 	if !strings.HasPrefix(urlPath, "/.well-known/") {
-		if serverConfig.Verbosity >= 3 {
-			logf("http", "trace", r.RemoteAddr, useragent, "%s %s 404", r.Method, urlPath)
-		}
+		log.PDebug("HTTP 404", map[string]any{
+			"remote_addr": r.RemoteAddr,
+			"user_agent":  useragent,
+			"method":      r.Method,
+			"path":        urlPath,
+		})
 		rw.WriteHeader(404)
 		return
 	}
@@ -103,9 +102,12 @@ func (s *httpServer) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 
 	f, err := os.Open(localPath)
 	if err != nil {
-		if serverConfig.Verbosity >= 3 {
-			logf("http", "trace", r.RemoteAddr, useragent, "%s %s 404", r.Method, urlPath)
-		}
+		log.PDebug("HTTP 404", map[string]any{
+			"remote_addr": r.RemoteAddr,
+			"user_agent":  useragent,
+			"method":      r.Method,
+			"path":        urlPath,
+		})
 		rw.WriteHeader(404)
 		return
 	}
@@ -113,9 +115,12 @@ func (s *httpServer) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 
 	info, err := f.Stat()
 	if err != nil {
-		if serverConfig.Verbosity >= 3 {
-			logf("http", "trace", r.RemoteAddr, useragent, "%s %s 404", r.Method, urlPath)
-		}
+		log.PDebug("HTTP 404", map[string]any{
+			"remote_addr": r.RemoteAddr,
+			"user_agent":  useragent,
+			"method":      r.Method,
+			"path":        urlPath,
+		})
 		rw.WriteHeader(404)
 		return
 	}
@@ -126,9 +131,12 @@ func (s *httpServer) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	rw.Header().Set("Content-Length", contentLength)
 	rw.Header().Set("Cache-Control", "no-store")
 	rw.WriteHeader(200)
-	if serverConfig.Verbosity >= 3 {
-		logf("http", "trace", r.RemoteAddr, useragent, "%s %s 200", r.Method, urlPath)
-	}
+	log.PDebug("HTTP 200", map[string]any{
+		"remote_addr": r.RemoteAddr,
+		"user_agent":  useragent,
+		"method":      r.Method,
+		"path":        urlPath,
+	})
 	if r.Method == "HEAD" {
 		return
 	}

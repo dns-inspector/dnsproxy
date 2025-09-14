@@ -50,6 +50,13 @@ func (w *requestLogWriter) Rotate() {
 	}
 }
 
+func (w *requestLogWriter) Close() {
+	w.lock.Lock()
+	w.f.Sync()
+	w.f.Close()
+	w.lock.Unlock()
+}
+
 func (w *requestLogWriter) Record(proto, ip string, query, reply []byte) {
 	values := []string{
 		time.Now().UTC().Format("2006-01-02T15:04:05-0700"),

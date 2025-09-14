@@ -21,10 +21,10 @@ package monitoring
 import (
 	"fmt"
 	"maps"
-	"os"
 	"sync"
 	"time"
 
+	"github.com/ecnepsnai/logtic"
 	"github.com/ecnepsnai/zbx"
 )
 
@@ -41,11 +41,15 @@ var keyToItemIdMap = map[string]int{
 var valMap = map[int]uint{}
 var valLock = &sync.Mutex{}
 var session *zbx.ActiveSession
+var log = logtic.Log.Connect("zabbix")
 
 func Setup(serverName, zabbixHost string) error {
 	s, items, err := zbx.StartActive(serverName, zabbixHost)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error connecting to zabbix server %s: %s\n", zabbixHost, err.Error())
+		log.PError("Error connecting to zabbix server", map[string]any{
+			"server": zabbixHost,
+			"error":  err.Error(),
+		})
 		return err
 	}
 
@@ -57,7 +61,7 @@ func Setup(serverName, zabbixHost string) error {
 
 	for key, id := range keyToItemIdMap {
 		if id == -1 {
-			fmt.Fprintf(os.Stderr, "No active item with key '%s' found for zabbix host '%s'. This metric will not be sent to the server.\n", key, zabbixHost)
+			log.Warn("No active item with key '%s' found for zabbix host '%s'. This metric will not be sent to the server.", key, zabbixHost)
 		}
 	}
 
@@ -84,11 +88,14 @@ func Send() {
 	for id, value := range values {
 		strValues[id] = fmt.Sprintf("%d", value)
 	}
-	// agent.ping is always 1
-	strValues[keyToItemIdMap["agent.ping"]] = "1"
+	// server.state is always 1
+	strValues[keyToItemIdMap["server.state"]] = "1"
 
 	if err := session.Send(strValues); err != nil {
-		fmt.Fprintf(os.Stderr, "Error sending stats to zabbix server: %s\n", err.Error())
+		log.PError("Error sending values to zabbix server", map[string]any{
+			"error": err.Error(),
+		})
+		return
 	}
 }
 

@@ -24,10 +24,10 @@ import (
 	"encoding/binary"
 	"fmt"
 	"net"
-	"os"
 	"sync"
 	"time"
 
+	"github.com/ecnepsnai/logtic"
 	"github.com/ecnepsnai/sdnotify"
 	"github.com/quic-go/quic-go"
 )
@@ -38,11 +38,8 @@ var (
 	Revision = "unknown"
 )
 
-var (
-	serverConfig *tServerConfig
-	logLock      = &sync.Mutex{}
-	logFile      *os.File
-)
+var serverConfig *tServerConfig
+var log = logtic.Log.Connect("dnsproxy")
 
 var (
 	listenerTLS4   net.Listener
@@ -63,18 +60,7 @@ var (
 func Start(configPath string) (bool, error) {
 	serverConfig = mustLoadConfig(configPath)
 
-	if serverConfig.RequestsLogPath != nil {
-		if err := requestLog.Open(*serverConfig.RequestsLogPath); err != nil {
-			fmt.Fprintf(os.Stderr, "Unable to open requests log file: %s", err.Error())
-		}
-	}
-
-	f, err := os.OpenFile(serverConfig.LogPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err == nil {
-		logFile = f
-	} else {
-		fmt.Fprintf(os.Stderr, "Unable to open log file: %s", err.Error())
-	}
+	setupLog()
 
 	cert, err := tls.LoadX509KeyPair(serverConfig.CertPath, serverConfig.KeyPath)
 	if err != nil {
@@ -92,9 +78,10 @@ func Start(configPath string) (bool, error) {
 	startHttpsServer(listenErr, cert)
 	startHttpServer(listenErr)
 
-	if serverConfig.Verbosity >= 2 {
-		logf("main", "info", "", "", "Server started")
-	}
+	log.PInfo("Server started", map[string]any{
+		"server_name": serverConfig.ServerName,
+		"version":     Version,
+	})
 
 	sdnotify.Ready()
 
@@ -112,10 +99,7 @@ func Start(configPath string) (bool, error) {
 }
 
 func Stop(restart bool) {
-	if serverConfig.Verbosity >= 2 {
-		logf("main", "info", "", "", "Server stopped")
-	}
-
+	log.Warn("Server stopping")
 	stop(restart)
 }
 
@@ -129,12 +113,9 @@ func stop(restart bool) {
 	}
 	restartLock.Unlock()
 
-	if logFile != nil {
-		logLock.Lock()
-		logFile.Sync()
-		logFile.Close()
-		logFile = nil
-		logLock.Unlock()
+	logtic.Log.Close()
+	if requestLog != nil {
+		requestLog.Close()
 	}
 	if listenerTLS4 != nil {
 		listenerTLS4.Close()

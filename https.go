@@ -26,10 +26,15 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"runtime/debug"
 	"time"
+
+	"github.com/ecnepsnai/logtic"
 )
 
 func startHttpsServer(listenErr chan error, cert tls.Certificate) {
+	source := logtic.Log.Connect("https")
+
 	go func() {
 		if serverConfig.HTTPSPort == 0 {
 			return
@@ -45,11 +50,9 @@ func startHttpsServer(listenErr chan error, cert tls.Certificate) {
 			return
 		}
 		listenerHTTPS4 = l
-		if serverConfig.Verbosity >= 3 {
-			logf("main", "debug", "", "", "Start: HTTPS server started on: %s", l.Addr().String())
-		}
+		log.Debug("HTTPS server started on: %s", l.Addr().String())
 
-		listenErr <- http.Serve(l, &httpsServer{})
+		listenErr <- http.Serve(l, &httpsServer{source})
 	}()
 
 	go func() {
@@ -67,23 +70,24 @@ func startHttpsServer(listenErr chan error, cert tls.Certificate) {
 			return
 		}
 		listenerHTTPS4 = l
-		if serverConfig.Verbosity >= 3 {
-			logf("main", "debug", "", "", "Start: HTTPS server started on: %s", l.Addr().String())
-		}
+		log.Debug("HTTPS server started on: %s", l.Addr().String())
 
-		listenErr <- http.Serve(l, &httpsServer{})
+		listenErr <- http.Serve(l, &httpsServer{source})
 	}()
 }
 
-type httpsServer struct{}
+type httpsServer struct {
+	log *logtic.Source
+}
 
 func (s *httpsServer) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	defer func() {
 		if r := recover(); r != nil {
 			monitoring.RecordPanicRecover()
-			if serverConfig.Verbosity >= 1 {
-				logf("https", "error", "", "", "ServeHTTP: recovered from panic: %s", r)
-			}
+			s.log.PError("HTTPS server paniced", map[string]any{
+				"error": fmt.Sprintf("%s", r),
+				"stack": fmt.Sprintf("%s", debug.Stack()),
+			})
 		}
 	}()
 
@@ -96,11 +100,13 @@ func (s *httpsServer) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	if useragent == "" {
 		rw.WriteHeader(400)
 		rw.Write([]byte("a user agent is required"))
+		s.log.PDebug("Request finished", map[string]any{
+			"method":      r.Method,
+			"uri_stem":    r.URL.Path,
+			"status_code": 400,
+			"user_agent":  r.UserAgent(),
+		})
 		return
-	}
-
-	if serverConfig.Verbosity >= 3 {
-		logf("https", "info", r.RemoteAddr, useragent, "connect")
 	}
 
 	defer r.Body.Close()
@@ -108,19 +114,34 @@ func (s *httpsServer) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	if r.URL.Path == "/" && serverConfig.HTTPRedirect != "" {
 		rw.Header().Add("Location", serverConfig.HTTPRedirect)
 		rw.WriteHeader(302)
+		s.log.PDebug("Request finished", map[string]any{
+			"method":      r.Method,
+			"uri_stem":    r.URL.Path,
+			"status_code": 302,
+			"user_agent":  r.UserAgent(),
+		})
 		return
 	}
 
 	if r.URL.Path != "/dns-query" {
-		if serverConfig.Verbosity >= 2 {
-			logf("https", "warn", r.RemoteAddr, useragent, "unknown url: %s", r.URL.String())
-		}
 		rw.WriteHeader(404)
+		s.log.PDebug("Request finished", map[string]any{
+			"method":      r.Method,
+			"uri_stem":    r.URL.Path,
+			"status_code": 404,
+			"user_agent":  r.UserAgent(),
+		})
 		return
 	}
 
 	if r.Method != "GET" && r.Method != "POST" {
 		rw.WriteHeader(405)
+		s.log.PDebug("Request finished", map[string]any{
+			"method":      r.Method,
+			"uri_stem":    r.URL.Path,
+			"status_code": 405,
+			"user_agent":  r.UserAgent(),
+		})
 		return
 	}
 
@@ -128,54 +149,83 @@ func (s *httpsServer) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
 		encodedMessage := r.URL.Query().Get("dns")
 		if encodedMessage == "" {
-			if serverConfig.Verbosity >= 2 {
-				logf("https", "warn", r.RemoteAddr, useragent, "missing dns query in url")
-			}
 			monitoring.RecordQueryDohError()
 			rw.WriteHeader(400)
 			rw.Write([]byte("missing dns query in url"))
+			s.log.PDebug("Request finished", map[string]any{
+				"method":      r.Method,
+				"uri_stem":    r.URL.Path,
+				"status_code": 400,
+				"user_agent":  r.UserAgent(),
+				"error":       "missing dns query param in url",
+			})
 			return
 		}
 		m, err := base64.RawURLEncoding.DecodeString(encodedMessage)
 		if err != nil {
-			if serverConfig.Verbosity >= 2 {
-				logf("https", "warn", r.RemoteAddr, useragent, "invalid base64 data in dns query")
-			}
 			monitoring.RecordQueryDohError()
 			rw.WriteHeader(400)
 			rw.Write([]byte("invalid base64 value in dns query"))
+			s.log.PDebug("Request finished", map[string]any{
+				"method":      r.Method,
+				"uri_stem":    r.URL.Path,
+				"status_code": 400,
+				"user_agent":  r.UserAgent(),
+				"error":       "invalid base64 data in dns query param",
+			})
 			return
 		}
 		if len(m) <= 12 {
-			if serverConfig.Verbosity >= 2 {
-				logf("https", "warn", r.RemoteAddr, useragent, "invalid base64 data in dns query")
-			}
 			monitoring.RecordQueryDohError()
 			rw.WriteHeader(400)
 			rw.Write([]byte("invalid base64 value in dns query"))
+			s.log.PDebug("Request finished", map[string]any{
+				"method":      r.Method,
+				"uri_stem":    r.URL.Path,
+				"status_code": 400,
+				"user_agent":  r.UserAgent(),
+				"error":       "invalid base64 data in dns query param",
+			})
 			return
 		}
 		message = m
 	} else if r.Method == "POST" {
 		if r.ContentLength > 4096 {
-			if serverConfig.Verbosity >= 2 {
-				logf("https", "warn", r.RemoteAddr, useragent, "message too large")
-			}
 			monitoring.RecordQueryDohError()
 			rw.WriteHeader(400)
 			rw.Write([]byte("message too large"))
+			s.log.PDebug("Request finished", map[string]any{
+				"method":      r.Method,
+				"uri_stem":    r.URL.Path,
+				"status_code": 400,
+				"user_agent":  r.UserAgent(),
+				"error":       "message too large",
+			})
 			return
 		}
 		m, err := io.ReadAll(r.Body)
 		if err != nil {
 			monitoring.RecordQueryDohError()
-			rw.WriteHeader(500)
+			rw.WriteHeader(400)
+			s.log.PDebug("Request finished", map[string]any{
+				"method":      r.Method,
+				"uri_stem":    r.URL.Path,
+				"status_code": 400,
+				"user_agent":  r.UserAgent(),
+				"error":       err.Error(),
+			})
 			return
 		}
 		message = m
 	} else {
 		monitoring.RecordQueryDohError()
 		rw.WriteHeader(405)
+		s.log.PDebug("Request finished", map[string]any{
+			"method":      r.Method,
+			"uri_stem":    r.URL.Path,
+			"status_code": 405,
+			"user_agent":  r.UserAgent(),
+		})
 		return
 	}
 
@@ -189,12 +239,21 @@ func (s *httpsServer) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 		var err error
 		reply, err = proxyDnsMessage(message)
 		if err != nil {
-			if serverConfig.Verbosity >= 1 {
-				logf("https", "error", r.RemoteAddr, useragent, "error proxying dns message: %s", err.Error())
-			}
+			log.PError("Error proxying DNS message", map[string]any{
+				"proto":   "https",
+				"from_ip": r.RemoteAddr,
+				"error":   err.Error(),
+			})
 			monitoring.RecordQueryDohError()
 			rw.WriteHeader(500)
 			rw.Write([]byte("internal server error"))
+			s.log.PDebug("Request finished", map[string]any{
+				"method":      r.Method,
+				"uri_stem":    r.URL.Path,
+				"status_code": 400,
+				"user_agent":  r.UserAgent(),
+				"error":       err.Error(),
+			})
 			return
 		}
 	}
@@ -202,10 +261,15 @@ func (s *httpsServer) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	if requestLog != nil {
 		requestLog.Record("https", r.RemoteAddr, message, reply)
 	}
-	logf("https", "stats", "", "", "message proxied")
 	monitoring.RecordQueryDohForward()
 	rw.Header().Set("Content-Type", "application/dns-message")
 	rw.Header().Set("Content-Length", fmt.Sprintf("%d", len(reply[2:])))
 	rw.WriteHeader(200)
 	rw.Write(reply[2:]) // proxyDnsMessage includes the length, skip that in DoH
+	s.log.PDebug("Request finished", map[string]any{
+		"method":      r.Method,
+		"uri_stem":    r.URL.Path,
+		"status_code": 200,
+		"user_agent":  r.UserAgent(),
+	})
 }

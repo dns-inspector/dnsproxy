@@ -24,9 +24,13 @@ import (
 	"dnsproxy/monitoring"
 	"fmt"
 	"net"
+	"runtime/debug"
 
+	"github.com/ecnepsnai/logtic"
 	"github.com/quic-go/quic-go"
 )
+
+var quicLog = logtic.Log.Connect("quic")
 
 func quicServer(l *quic.EarlyListener) error {
 	for {
@@ -36,16 +40,12 @@ func quicServer(l *quic.EarlyListener) error {
 				return err
 			}
 
-			if serverConfig.Verbosity >= 1 {
-				logf("quic", "error", "", "", "quicServer: error accepting incomming connection: %s", err.Error())
-			}
+			quicLog.Error("Error accepting incoming connection: %s", err.Error())
 			continue
 		}
 		stream, err := conn.AcceptStream(context.Background())
 		if err != nil {
-			if serverConfig.Verbosity >= 1 {
-				logf("quic", "error", "", "", "quicServer: error accepting incomming connection: %s", err.Error())
-			}
+			quicLog.Error("Error accepting incoming connection: %s", err.Error())
 			continue
 		}
 		go handleQuicConn(conn, stream)
@@ -79,9 +79,7 @@ func startQuicServer(listenErr chan error, cert tls.Certificate) {
 			listenErr <- fmt.Errorf("unable to start IPv4 Quic server: %s", err.Error())
 			return
 		}
-		if serverConfig.Verbosity >= 3 {
-			logf("main", "debug", "", "", "Start: Quic server started on: %s", l.Addr().String())
-		}
+		quicLog.Debug("Start: Quic server started on: %s", l.Addr().String())
 
 		listenerQuic4 = l
 		listenErr <- quicServer(l)
@@ -113,9 +111,7 @@ func startQuicServer(listenErr chan error, cert tls.Certificate) {
 			listenErr <- fmt.Errorf("unable to start IPv6 Quic server: %s", err.Error())
 			return
 		}
-		if serverConfig.Verbosity >= 3 {
-			logf("main", "debug", "", "", "Start: Quic server started on: %s", l.Addr().String())
-		}
+		quicLog.Debug("Start: Quic server started on: %s", l.Addr().String())
 
 		listenerQuic6 = l
 		listenErr <- quicServer(l)
@@ -127,18 +123,15 @@ func handleQuicConn(conn *quic.Conn, rw *quic.Stream) {
 		if r := recover(); r != nil {
 			monitoring.RecordPanicRecover()
 			rw.Close()
-			if serverConfig.Verbosity >= 1 {
-				logf("quic", "error", "", "", "handleQuicConn: recovered from panic: %s", r)
-			}
+			quicLog.PError("QUIC server paniced", map[string]any{
+				"error": fmt.Sprintf("%s", r),
+				"stack": fmt.Sprintf("%s", debug.Stack()),
+			})
 		}
 	}()
 	defer rw.Close()
 
-	if serverConfig.Verbosity >= 3 {
-		logf("quic", "info", conn.RemoteAddr().String(), "", "connect")
-	}
-
-	if err := proxyDNSMessageWithLength("quic", conn.RemoteAddr().String(), rw); err != nil {
+	if err := proxyDNSMessageWithLength(quicLog, "quic", conn.RemoteAddr().String(), rw); err != nil {
 		monitoring.RecordQueryDotError()
 		return
 	}

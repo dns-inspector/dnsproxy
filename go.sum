@@ -1,5 +1,7 @@
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
+github.com/ecnepsnai/logtic v1.10.1 h1:AYrj4VTQ/cy29NI7Qjpq7d8L1Map1ZUNJ1n+ZRESEZE=
+github.com/ecnepsnai/logtic v1.10.1/go.mod h1:tpwE6daTr6MaTW/y27sd8wUsddhhK3A75iahBercBoA=
 github.com/ecnepsnai/sdnotify v1.0.0 h1:3fWha4w2K2fMlbo2ZKFnmVduxinGH0TdlKRyqM+2s90=
 github.com/ecnepsnai/sdnotify v1.0.0/go.mod h1:azJ0AoGHF0V1P2/0TC+BDVO2F95KpX9L2O3TyGm/Gi0=
 github.com/ecnepsnai/zbx v1.2.0 h1:hSAF8Q91Tqn1ypJJtGukc2yIrcuQCKeWFK6xAzVeAi0=

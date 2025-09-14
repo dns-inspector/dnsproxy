@@ -23,7 +23,12 @@ import (
 	"dnsproxy/monitoring"
 	"fmt"
 	"net"
+	"runtime/debug"
+
+	"github.com/ecnepsnai/logtic"
 )
+
+var tlsLog = logtic.Log.Connect("tls")
 
 func tlsServer(l net.Listener) error {
 	for {
@@ -50,9 +55,7 @@ func startTlsServer(listenErr chan error, cert tls.Certificate) {
 			return
 		}
 		listenerTLS4 = l
-		if serverConfig.Verbosity >= 3 {
-			logf("main", "debug", "", "", "Start: TLS server started on: %s", l.Addr().String())
-		}
+		tlsLog.Debug("Start: TLS server started on: %s", l.Addr().String())
 
 		listenErr <- tlsServer(l)
 	}()
@@ -71,9 +74,7 @@ func startTlsServer(listenErr chan error, cert tls.Certificate) {
 			return
 		}
 		listenerTLS4 = l
-		if serverConfig.Verbosity >= 3 {
-			logf("main", "debug", "", "", "Start: TLS server started on: %s", l.Addr().String())
-		}
+		tlsLog.Debug("Start: TLS server started on: %s", l.Addr().String())
 
 		listenErr <- tlsServer(l)
 	}()
@@ -84,18 +85,16 @@ func handleTlsConn(conn net.Conn) {
 		if r := recover(); r != nil {
 			monitoring.RecordPanicRecover()
 			conn.Close()
-			if serverConfig.Verbosity >= 1 {
-				logf("tls", "error", "", "", "handleTlsConn: recovered from panic: %s", r)
-			}
+			tlsLog.PError("TLS server paniced", map[string]any{
+				"error": fmt.Sprintf("%s", r),
+				"stack": fmt.Sprintf("%s", debug.Stack()),
+			})
 		}
 	}()
 
-	if serverConfig.Verbosity >= 3 {
-		logf("tls", "info", conn.RemoteAddr().String(), "", "connect")
-	}
 	defer conn.Close()
 
-	if err := proxyDNSMessageWithLength("tls", conn.RemoteAddr().String(), conn); err != nil {
+	if err := proxyDNSMessageWithLength(tlsLog, "tls", conn.RemoteAddr().String(), conn); err != nil {
 		monitoring.RecordQueryDotError()
 		return
 	}

@@ -3,6 +3,7 @@ module dnsproxy
 go 1.25.1
 
 require (
+	github.com/ecnepsnai/logtic v1.10.1
 	github.com/ecnepsnai/sdnotify v1.0.0
 	github.com/ecnepsnai/zbx v1.2.0
 	github.com/google/uuid v1.6.0
