@@ -44,14 +44,22 @@ var valLock = &sync.Mutex{}
 var session *zbx.ActiveSession
 var log = logtic.Log.Connect("zabbix")
 
-func Setup(serverName, zabbixHost string) error {
-	s, items, err := zbx.StartActive(serverName, zabbixHost)
-	if err != nil {
-		log.PError("Error connecting to zabbix server", map[string]any{
-			"server": zabbixHost,
-			"error":  err.Error(),
-		})
-		return err
+func Setup(serverName, zabbixHost string) {
+	var items []zbx.SupportedItem
+	var s *zbx.ActiveSession
+	var err error
+	for {
+		s, items, err = zbx.StartActive(serverName, zabbixHost)
+		if err != nil {
+			log.PError("Error connecting to zabbix server, will try again in 1 minute", map[string]any{
+				"server": zabbixHost,
+				"error":  err.Error(),
+			})
+			time.Sleep(60 * time.Second)
+		} else {
+			log.Debug("Connecting to zabbix server with %d items", len(items))
+			break
+		}
 	}
 
 	for _, item := range items {
@@ -62,12 +70,12 @@ func Setup(serverName, zabbixHost string) error {
 
 	for key, id := range keyToItemIdMap {
 		if id == -1 {
-			log.Warn("No active item with key '%s' found for zabbix host '%s'. This metric will not be sent to the server.", key, zabbixHost)
+			log.Error("No active item with key '%s' found for zabbix host '%s'. This metric will not be sent to the server.", key, zabbixHost)
 		}
 	}
 
 	session = s
-	return nil
+	StartSendLoop()
 }
 
 func Send() {

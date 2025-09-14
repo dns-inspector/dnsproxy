@@ -67,8 +67,8 @@ func Start(configPath string) (bool, error) {
 		return false, fmt.Errorf("unable to load certificate or private key: %s", err.Error())
 	}
 
-	if serverConfig.ZabbixHost != nil && monitoring.Setup(serverConfig.ServerName, *serverConfig.ZabbixHost) == nil {
-		go monitoring.StartSendLoop()
+	if serverConfig.ZabbixHost != nil {
+		go monitoring.Setup(serverConfig.ServerName, *serverConfig.ZabbixHost)
 	}
 
 	listenErr := make(chan error, 1)
@@ -83,8 +83,7 @@ func Start(configPath string) (bool, error) {
 		"version":     Version,
 	})
 
-	sdnotify.Ready()
-
+	didSendReadySignal := false
 	for {
 		select {
 		case err := <-listenErr:
@@ -93,7 +92,12 @@ func Start(configPath string) (bool, error) {
 			restartLock.Unlock()
 			return shouldRestart, err
 		case <-time.After(1 * time.Second):
-			sdnotify.Watchdog()
+			if didSendReadySignal {
+				sdnotify.Watchdog()
+			} else {
+				sdnotify.Ready()
+				didSendReadySignal = true
+			}
 		}
 	}
 }
