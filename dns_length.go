@@ -55,8 +55,8 @@ func proxyDNSMessageWithLength(proto, remoteAddr string, rw io.ReadWriter) error
 		}
 	}
 
-	if serverConfig.Verbosity >= 3 {
-		logf(proto, "trace", remoteAddr, "", "message: %02x reply: %02x", message, reply)
+	if requestLog != nil {
+		requestLog.Record(proto, remoteAddr, message, reply)
 	}
 
 	logf(proto, "stats", "", "", "message proxied")

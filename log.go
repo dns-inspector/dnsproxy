@@ -10,6 +10,10 @@ import (
 )
 
 func RotateLog() {
+	if requestLog != nil {
+		go requestLog.Rotate()
+	}
+
 	if logFile == nil {
 		return
 	}
@@ -80,14 +84,4 @@ func logf(proto, level, ip, useragent, format string, args ...any) {
 		logFile.Write(line)
 		logLock.Unlock()
 	}
-}
-
-func csvEscape(in string) string {
-	if in != "" && strings.ContainsAny(in, ",\"\n") {
-		in = strings.ReplaceAll(in, ",", "__COMMA__")
-		in = strings.ReplaceAll(in, "\"", "__QUOTE__")
-		in = strings.ReplaceAll(in, "\n", "__NEWLINE__")
-	}
-
-	return in
 }

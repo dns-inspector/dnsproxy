@@ -63,6 +63,12 @@ var (
 func Start(configPath string) (bool, error) {
 	serverConfig = mustLoadConfig(configPath)
 
+	if serverConfig.RequestsLogPath != nil {
+		if err := requestLog.Open(*serverConfig.RequestsLogPath); err != nil {
+			fmt.Fprintf(os.Stderr, "Unable to open requests log file: %s", err.Error())
+		}
+	}
+
 	f, err := os.OpenFile(serverConfig.LogPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err == nil {
 		logFile = f

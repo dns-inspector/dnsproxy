@@ -199,8 +199,8 @@ func (s *httpsServer) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if serverConfig.Verbosity >= 3 {
-		logf("https", "trace", r.RemoteAddr, useragent, "message: %02x reply: %02x", message, reply)
+	if requestLog != nil {
+		requestLog.Record("https", r.RemoteAddr, message, reply)
 	}
 	logf("https", "stats", "", "", "message proxied")
 	monitoring.RecordQueryDohForward()

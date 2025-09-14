@@ -39,6 +39,7 @@ type tServerConfig struct {
 	KeyPath             string
 	Verbosity           uint8
 	LogPath             string
+	RequestsLogPath     *string
 	CompressRotatedLogs bool
 	DNSServerAddr       string
 	HTTPSPort           uint16
@@ -69,6 +70,10 @@ func (c tServerConfig) Validate() (errors []string) {
 
 	if c.Verbosity > 3 {
 		errors = append(errors, fmt.Sprintf("invalid verbosity level %d, must be one of 0, 1, 2, or 3", c.Verbosity))
+	}
+
+	if c.RequestsLogPath != nil && *c.RequestsLogPath == "" {
+		errors = append(errors, "invalid requests log path")
 	}
 
 	if _, _, err := net.SplitHostPort(c.DNSServerAddr); err != nil {
@@ -149,6 +154,8 @@ func loadConfig(configPath string) (*tServerConfig, []string) {
 			config.Verbosity = verbosity
 		case "log_path":
 			config.LogPath = value
+		case "requests_log_path":
+			config.RequestsLogPath = &value
 		case "compress_rotated_logs":
 			config.CompressRotatedLogs = strings.EqualFold(value, "true") || strings.EqualFold(value, "on") || strings.EqualFold(value, "yes")
 		case "dns_server_addr":
