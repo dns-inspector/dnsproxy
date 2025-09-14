@@ -21,7 +21,6 @@ package dnsproxy
 import (
 	"crypto/tls"
 	"dnsproxy/monitoring"
-	"encoding/binary"
 	"fmt"
 	"net"
 )
@@ -96,63 +95,9 @@ func handleTlsConn(conn net.Conn) {
 	}
 	defer conn.Close()
 
-	rawSize := make([]byte, 2)
-
-	if _, err := conn.Read(rawSize); err != nil {
-		if serverConfig.Verbosity >= 2 {
-			logf("tls", "warn", conn.RemoteAddr().String(), "", "error reading message: %s", err.Error())
-		}
+	if err := proxyDNSMessageWithLength("tls", conn.RemoteAddr().String(), conn); err != nil {
 		monitoring.RecordQueryDotError()
 		return
 	}
-	size := binary.BigEndian.Uint16(rawSize)
-	if size > 4096 {
-		if serverConfig.Verbosity >= 2 {
-			logf("tls", "warn", conn.RemoteAddr().String(), "", "request too large: %d", size)
-		}
-		conn.Write([]byte("request too large"))
-		monitoring.RecordQueryDotError()
-		return
-	}
-
-	message := make([]byte, size)
-	read, err := conn.Read(message)
-	if err != nil {
-		if serverConfig.Verbosity >= 2 {
-			logf("tls", "warn", conn.RemoteAddr().String(), "", "error reading message: %s", err.Error())
-		}
-		monitoring.RecordQueryDotError()
-		return
-	}
-	if read != int(size) {
-		if serverConfig.Verbosity >= 2 {
-			logf("tls", "warn", conn.RemoteAddr().String(), "", "invalid message size")
-		}
-		conn.Write([]byte("invalid message size"))
-		monitoring.RecordQueryDotError()
-		return
-	}
-
-	message = append(rawSize, message...)
-
-	reply := processControlQuery(conn.RemoteAddr().String(), message)
-	if reply == nil {
-		var err error
-		reply, err = proxyDnsMessage(message)
-		if err != nil {
-			if serverConfig.Verbosity >= 1 {
-				logf("tls", "error", conn.RemoteAddr().String(), "", "error proxying message: %s", err.Error())
-			}
-			monitoring.RecordQueryDotError()
-			return
-		}
-	}
-
-	if serverConfig.Verbosity >= 3 {
-		logf("tls", "trace", conn.RemoteAddr().String(), "", "message: %02x reply: %02x", message, reply)
-	}
-
-	logf("tls", "stats", "", "", "message proxied")
 	monitoring.RecordQueryDotForward()
-	conn.Write(reply)
 }

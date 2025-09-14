@@ -22,9 +22,7 @@ import (
 	"context"
 	"crypto/tls"
 	"dnsproxy/monitoring"
-	"encoding/binary"
 	"fmt"
-	"io"
 	"net"
 
 	"github.com/quic-go/quic-go"
@@ -140,63 +138,9 @@ func handleQuicConn(conn *quic.Conn, rw *quic.Stream) {
 		logf("quic", "info", conn.RemoteAddr().String(), "", "connect")
 	}
 
-	rawSize := make([]byte, 2)
-
-	if _, err := rw.Read(rawSize); err != nil {
-		if serverConfig.Verbosity >= 2 {
-			logf("quic", "warn", conn.RemoteAddr().String(), "", "error reading message length: %s", err.Error())
-		}
-		monitoring.RecordQueryDoqError()
+	if err := proxyDNSMessageWithLength("quic", conn.RemoteAddr().String(), rw); err != nil {
+		monitoring.RecordQueryDotError()
 		return
 	}
-	size := binary.BigEndian.Uint16(rawSize)
-	if size > 4096 {
-		if serverConfig.Verbosity >= 2 {
-			logf("quic", "warn", conn.RemoteAddr().String(), "", "request too large: %d", size)
-		}
-		rw.Write([]byte("request too large"))
-		monitoring.RecordQueryDoqError()
-		return
-	}
-
-	message := make([]byte, size)
-	read, err := rw.Read(message)
-	if err != nil && err != io.EOF {
-		if serverConfig.Verbosity >= 2 {
-			logf("quic", "warn", conn.RemoteAddr().String(), "", "error reading message: %s", err.Error())
-		}
-		monitoring.RecordQueryDoqError()
-		return
-	}
-	if read != int(size) {
-		if serverConfig.Verbosity >= 2 {
-			logf("quic", "warn", conn.RemoteAddr().String(), "", "invalid message size")
-		}
-		rw.Write([]byte("invalid message size"))
-		monitoring.RecordQueryDoqError()
-		return
-	}
-
-	message = append(rawSize, message...)
-
-	reply := processControlQuery(conn.RemoteAddr().String(), message)
-	if reply == nil {
-		var err error
-		reply, err = proxyDnsMessage(message)
-		if err != nil {
-			if serverConfig.Verbosity >= 1 {
-				logf("quic", "error", conn.RemoteAddr().String(), "", "error proxying message: %s", err.Error())
-			}
-			monitoring.RecordQueryDoqError()
-			return
-		}
-	}
-
-	if serverConfig.Verbosity >= 3 {
-		logf("quic", "trace", conn.RemoteAddr().String(), "", "message: %02x reply: %02x", message, reply)
-	}
-
-	logf("quic", "stats", "", "", "message proxied")
-	monitoring.RecordQueryDoqForward()
-	rw.Write(reply)
+	monitoring.RecordQueryDotForward()
 }
