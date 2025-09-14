@@ -40,7 +40,7 @@ func TestMain(m *testing.M) {
 	}
 
 	go Start("dnsproxy_test.conf")
-	time.Sleep(10 * time.Millisecond)
+	time.Sleep(100 * time.Millisecond)
 	result := m.Run()
 	Stop(false)
 	os.Exit(result)

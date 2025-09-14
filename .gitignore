@@ -9,6 +9,7 @@ package/rpm/*.tar.gz
 package/deb/workdir
 *.csv
 *.crt
+*.log
 *.key
 /dnsproxy
 /proxytest

@@ -59,5 +59,6 @@ func proxyDNSMessageWithLength(log *logtic.Source, proto, remoteAddr string, rw 
 		"proto":   proto,
 		"from_ip": remoteAddr,
 	})
+	rw.Write(reply)
 	return nil
 }

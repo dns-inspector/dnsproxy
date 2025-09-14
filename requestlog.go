@@ -23,9 +23,11 @@ func (w *requestLogWriter) Open(filePath string) error {
 	if err != nil {
 		return err
 	}
-	w.filePath = filePath
-	w.f = f
-	w.lock = &sync.Mutex{}
+	w = &requestLogWriter{
+		f:        f,
+		filePath: filePath,
+		lock:     &sync.Mutex{},
+	}
 	return nil
 }
 
