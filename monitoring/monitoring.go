@@ -30,12 +30,13 @@ import (
 
 var keyToItemIdMap = map[string]int{
 	"panic.recover":     -1,
-	"query.doh.forward": -1,
-	"query.dot.forward": -1,
-	"query.doq.forward": -1,
 	"query.doh.error":   -1,
-	"query.dot.error":   -1,
+	"query.doh.forward": -1,
 	"query.doq.error":   -1,
+	"query.doq.forward": -1,
+	"query.dot.error":   -1,
+	"query.dot.forward": -1,
+	"server.state":      -1,
 }
 
 var valMap = map[int]uint{}

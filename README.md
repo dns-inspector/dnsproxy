@@ -50,7 +50,7 @@ send the following metrics every minute:
 
 |Item Key|Description|
 |-|-|
-|`agent.ping`|Will always be `1` so long as dnsproxy is running.|
+|`server.state`|Will always be `1` so long as dnsproxy is running.|
 |`panic.recover`|The number of panics that have been recovered from within the last minute.|
 |`query.doh.forward`|The number of DNS over HTTPS queries that have been forwarded.|
 |`query.dot.forward`|The number of DNS over TLS queries that have been forwarded.|
